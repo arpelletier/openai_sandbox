@@ -1,0 +1,59 @@
+PROMPT: What drugs treat Crohn's disease?
+
+DISEASES: [("Crohn's disease", 'DISEASE')]
+OTHER ENTITIES: []
+PARTS OF SPEECH: [('What', 'PRON'), ('drugs', 'NOUN'), ('treat', 'VERB'), ('Crohn', 'PROPN'), ("'s", 'PART'), ('disease', 'NOUN'), ('?', 'PUNCT'), ('\n', 'SPACE')]
+
+PROMPT: What are different treatment options for ADHD?
+
+DISEASES: [('ADHD', 'DISEASE')]
+OTHER ENTITIES: []
+PARTS OF SPEECH: [('What', 'PRON'), ('are', 'AUX'), ('different', 'ADJ'), ('treatment', 'NOUN'), ('options', 'NOUN'), ('for', 'ADP'), ('ADHD', 'PROPN'), ('?', 'PUNCT'), ('\n', 'SPACE')]
+
+PROMPT: List the medications someone with pneumonia may be prescribed.
+
+DISEASES: [('pneumonia', 'DISEASE')]
+OTHER ENTITIES: []
+PARTS OF SPEECH: [('List', 'VERB'), ('the', 'DET'), ('medications', 'NOUN'), ('someone', 'PRON'), ('with', 'ADP'), ('pneumonia', 'NOUN'), ('may', 'AUX'), ('be', 'AUX'), ('prescribed', 'VERB'), ('.', 'PUNCT'), ('\n', 'SPACE')]
+
+PROMPT: Is scoliosis curable?
+
+DISEASES: [('scoliosis', 'DISEASE')]
+OTHER ENTITIES: []
+PARTS OF SPEECH: [('Is', 'AUX'), ('scoliosis', 'NOUN'), ('curable', 'NOUN'), ('?', 'PUNCT'), ('\n', 'SPACE')]
+
+PROMPT: How does ibuprofen help with menstrual pain?
+
+DISEASES: [('ibuprofen', 'CHEMICAL'), ('menstrual pain', 'DISEASE')]
+OTHER ENTITIES: [('ibuprofen', 'SIMPLE_CHEMICAL')]
+PARTS OF SPEECH: [('How', 'SCONJ'), ('does', 'AUX'), ('ibuprofen', 'VERB'), ('help', 'NOUN'), ('with', 'ADP'), ('menstrual', 'ADJ'), ('pain', 'NOUN'), ('?', 'PUNCT'), ('\n', 'SPACE')]
+
+PROMPT: Which pathways are most significant in p53 signaling in patients with breast cancer?
+
+DISEASES: [('breast cancer', 'DISEASE')]
+OTHER ENTITIES: [('p53', 'GENE_OR_GENE_PRODUCT'), ('patients', 'ORGANISM'), ('breast cancer', 'CANCER')]
+PARTS OF SPEECH: [('Which', 'DET'), ('pathways', 'NOUN'), ('are', 'AUX'), ('most', 'ADV'), ('significant', 'ADJ'), ('in', 'ADP'), ('p53', 'NOUN'), ('signaling', 'VERB'), ('in', 'ADP'), ('patients', 'NOUN'), ('with', 'ADP'), ('breast', 'NOUN'), ('cancer', 'NOUN'), ('?', 'PUNCT'), ('\n', 'SPACE')]
+
+PROMPT: What are preventative measures for heart disease?
+
+DISEASES: [('heart disease', 'DISEASE')]
+OTHER ENTITIES: [('heart', 'ORGAN')]
+PARTS OF SPEECH: [('What', 'PRON'), ('are', 'AUX'), ('preventative', 'ADJ'), ('measures', 'NOUN'), ('for', 'ADP'), ('heart', 'NOUN'), ('disease', 'NOUN'), ('?', 'PUNCT'), ('\n', 'SPACE')]
+
+PROMPT: Explain what happens to neurons in patients with multiple sclerosis.
+
+DISEASES: [('multiple sclerosis', 'DISEASE')]
+OTHER ENTITIES: [('neurons', 'CELL'), ('patients', 'ORGANISM')]
+PARTS OF SPEECH: [('Explain', 'VERB'), ('what', 'PRON'), ('happens', 'VERB'), ('to', 'ADP'), ('neurons', 'NOUN'), ('in', 'ADP'), ('patients', 'NOUN'), ('with', 'ADP'), ('multiple', 'ADJ'), ('sclerosis', 'NOUN'), ('.', 'PUNCT'), ('\n', 'SPACE')]
+
+PROMPT: How long are most treatments for lung cancer good for?
+
+DISEASES: [('lung cancer', 'DISEASE')]
+OTHER ENTITIES: [('lung cancer', 'CANCER')]
+PARTS OF SPEECH: [('How', 'SCONJ'), ('long', 'ADV'), ('are', 'AUX'), ('most', 'ADJ'), ('treatments', 'NOUN'), ('for', 'ADP'), ('lung', 'NOUN'), ('cancer', 'NOUN'), ('good', 'ADJ'), ('for', 'ADP'), ('?', 'PUNCT'), ('\n', 'SPACE')]
+
+PROMPT: What genes are most important in colon cancer and diabetes?
+
+DISEASES: [('colon cancer', 'DISEASE'), ('diabetes', 'DISEASE')]
+OTHER ENTITIES: [('colon cancer', 'CANCER')]
+PARTS OF SPEECH: [('What', 'DET'), ('genes', 'NOUN'), ('are', 'AUX'), ('most', 'ADV'), ('important', 'ADJ'), ('in', 'ADP'), ('colon', 'NOUN'), ('cancer', 'NOUN'), ('and', 'CCONJ'), ('diabetes', 'NOUN'), ('?', 'PUNCT'), ('\n', 'SPACE')]
