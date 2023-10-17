@@ -1,6 +1,7 @@
 import scispacy
 import spacy
-# from scispacy.umls_linking import UmlsEntityLinker
+from scispacy.umls_linking import UmlsEntityLinker
+from collections import OrderedDict
 
 def disease_ner(text: str):
     disease_ner_nlp = spacy.load("en_ner_bc5cdr_md")
@@ -16,6 +17,26 @@ def part_of_speech_tags(text: str):
     pos_nlp = spacy.load("en_core_web_sm")
     document = pos_nlp(text)
     return [(token.text, token.pos_) for token in document]
+
+def unified_medical_lang_entity(spacy_model, document):
+    nlp = spacy.load(spacy_model)
+    linker = UmlsEntityLinker(k=10)
+    # nlp.add_pipe(linker)
+    nlp.add_pipe('scispacy_linker')
+    doc = nlp(document)
+    entity = doc.ents
+    entity = [str(item) for item in entity]
+    entity = str(OrderedDict.fromkeys(entity))
+    entity = nlp(entity).ents
+    for entity in entity:
+        import pdb;pdb.set_trace()
+        for umls_ent in entity._.umls_ents:
+            print("Entity name: ", entity)
+            Concept_id, score = umls_ent
+            print("concept-id", Concept_id)
+            print("score", score)
+            print(linker.umls.cui_to_entity[umls_ent[0]])
+
 
 def show_entites(text: str):
     print("DISEASES: {}".format(disease_ner(text)))
@@ -34,4 +55,6 @@ https://oyewusiwuraola.medium.com/how-to-use-scispacy-for-biomedical-named-entit
 #         print()
 
 if __name__ == "__main__":
-    show_entites("What are drugs used for treating breast cancer")
+    # show_entites("What are drugs used for treating breast cancer")
+    # import pdb;pdb.set_trace()
+    unified_medical_lang_entity("en_ner_bc5cdr_md", "What are drugs used for treating breast cancer")
