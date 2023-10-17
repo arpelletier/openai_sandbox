@@ -11,6 +11,33 @@ PASSWORD = "Nwb27DK-3SuiqTAaW01VjVKRN_mnEgDLqQDVpPncVAI"
 AUTH = (USER, PASSWORD)
 
 
+def clear_neo4j():
+	'''
+	source: https://stackoverflow.com/questions/23310114/how-to-reset-clear-delete-neo4j-database
+	'''
+	print(get_node_type_properties())
+
+	DELETE_RELS='''
+		:auto MATCH ()-[r]->() 
+		CALL { WITH r 
+		DELETE r 
+		} IN TRANSACTIONS OF 50000 ROWS;
+		'''
+
+	DELETE_NODES='''
+		:auto MATCH (n) 
+		CALL { WITH n 
+		DETACH DELETE n 
+		} IN TRANSACTIONS OF 50000 ROWS;
+		'''
+
+	search(DELETE_RELS)
+	search(DELETE_NODES)
+
+	return "Deleted" + get_node_type_properties() 
+
+
+
 def get_node_type_properties():
     """
     Return node schema. 
@@ -36,5 +63,45 @@ def search(query):
         # Attempt search query
         return search_query(driver, query)
 
+def query():
+
+	test_input = 'MATCH (tom:Person {name: "Tom Hanks"})-[:ACTED_IN]->(tomHanksMovies)\nRETURN tom,tomHanksMovies'
+	return search(test_input)
+
+
+def populate_temp():
+	'''
+	This function populates the KG with dummy relations and nodes
+	'''
+
+	# TODO Step 2: Load from a triple file
+
+	return "Test"
+
+def interactive():
+	while True:
+		# Get user input
+		user_input = input("Query (q); Delete (d); Populate (p)")
+
+		if user_input == 'q':
+			print("Query.")
+			result = query()
+		elif user_input == 'd':
+			print("Delete.")
+			result = clear_neo4j()
+		elif user_input == 'p':
+			print("Populate.")
+			result = populate_temp()
+			
+
+
+		print(result)
+
+
+
+
+
+
 if __name__ == "__main__":
-    print(get_node_type_properties())
+    interactive()
+	#print(get_node_type_properties())
