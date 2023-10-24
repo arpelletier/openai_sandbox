@@ -1,5 +1,6 @@
 import os
 import openai
+from query_graph import *
 
 
 def parse_message(chat_completion):
@@ -42,9 +43,16 @@ def write_to_log(log_file, text):
 
 def start_chat(log_file=None):
     
+    first_chat = True
     while True:
         # Get user input
         user_input = input("User: ")
+
+        # Get the relevant information 
+        if first_chat:
+            schema = get_schema()
+            first_chat = False
+            user_input += "\n The schema for the graph is {}".format(schema)
         
         # Send to API
         chat_completion = openai.ChatCompletion.create(model="gpt-3.5-turbo", messages=[{"role": "user", "content": user_input}])
@@ -53,12 +61,14 @@ def start_chat(log_file=None):
         print(response)
 
         if log_file:
-            write_to_log(log_file, "User: "+user_input)
+            write_to_log(log_file, "User: "+ user_input)
             write_to_log(log_file, response)
+        
+        print("Full user input: {}".format(user_input))
 
 
 # Load your API key from an environment variable or secret management service
-openai.api_key_path = 'OPENAI_API_KEY'
+openai.api_key_path = '.OPENAI_API_KEY'
 log_folder = './chat_log/'
 log_file = get_log_file(log_folder)
 

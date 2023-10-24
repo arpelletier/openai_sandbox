@@ -1,6 +1,9 @@
 import os
 import openai
 
+import sys
+sys.path.insert(1, '/NER/')
+
 
 def parse_message(chat_completion):
 
@@ -41,6 +44,9 @@ def write_to_log(log_file, text):
 
 
 def ner(input):
+    """
+    Where we would do NER on the next input.
+    """
     print("Named Entity Recognition module:")
     print(input)
 
