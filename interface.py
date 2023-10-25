@@ -1,5 +1,5 @@
 import os
-import openai
+import openai_api
 
 import sys
 sys.path.insert(1, '/NER/')
@@ -63,7 +63,7 @@ def start_chat(log_file=None):
         response = ner_results
 
         # Send to API
-#        chat_completion = openai.ChatCompletion.create(model="gpt-3.5-turbo", messages=[{"role": "user", "content": user_input}])
+#        chat_completion = openai_api.ChatCompletion.create(model="gpt-3.5-turbo", messages=[{"role": "user", "content": user_input}])
 #        response = parse_message(chat_completion)
 
 #        print(response)
@@ -74,7 +74,7 @@ def start_chat(log_file=None):
 
 
 # Load your API key from an environment variable or secret management service
-openai.api_key_path = 'OPENAI_API_KEY'
+openai_api.api_key_path = 'OPENAI_API_KEY'
 log_folder = './chat_log/'
 log_file = get_log_file(log_folder)
 

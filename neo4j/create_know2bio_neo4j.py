@@ -82,7 +82,8 @@ class Neo4jConnector:
 # Load Know2BIO Data
 print("Loading Know2BIO edges")
 
-input_file = '../data/whole_kg_sampled.txt'
+input_file = '../data/2023-08-18_know2bio_whole_kg.txt'
+# input_file = '../data/whole_kg_sampled.txt'
 df = pd.read_csv(input_file,sep="\t",header=None)
 df.columns=['h','r','t']
 
