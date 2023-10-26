@@ -1,6 +1,8 @@
 import pandas as pd
 from neo4j import GraphDatabase
 
+from config import NEO4J_URI, NEO4J_USER, NEO4J_PASSWORD
+
 
 def clear_graph(session, debug=True):
     '''
@@ -27,13 +29,13 @@ def count_nodes_and_relationships(session, debug=True):
 
     # Count relationships
     relationship_query = "MATCH ()-->() RETURN COUNT(*) AS relationshipCount"
-    relationships = session.run(relationship_query).single()["relationshipCount"]
+    rels = session.run(relationship_query).single()["relationshipCount"]
     
     if debug:
         print(f"Number of nodes: {nodes}")
-        print(f"Number of relationships: {relationships}")
+        print(f"Number of relationships: {rels}")
 
-    return nodes, relationships
+    return nodes, rels
 
 
 def create_node(session, node_name, node_type):
@@ -43,7 +45,7 @@ def create_node(session, node_name, node_type):
     query = """
     CREATE (n:%s {name:"%s"})
     RETURN n
-    """%(node_type,":".join([node_type,node_name]))
+    """ % (node_type, ":".join([node_type, node_name]))
     
     session.run(query)
     
@@ -60,7 +62,7 @@ def create_relationship(session, entity_1, entity_2, relation):
     MATCH (e2:%s {name: "%s"})
     WHERE e1 IS NOT NULL AND e2 IS NOT NULL
     MERGE (e1)-[:`%s`]->(e2)
-    """ %(e1_type,entity_1,e2_type,entity_2,relation)
+    """ % (e1_type, entity_1, e2_type, entity_2, relation)
     result = session.run(query)
     
     # Consume the result to get the query summary
@@ -69,6 +71,18 @@ def create_relationship(session, entity_1, entity_2, relation):
     # Check if the relationship was created
     if summary.counters.relationships_created == 0:
         print("Warning: One or both persons do not exist in the graph.")
+
+
+def load_kg(kg_file):
+    df = pd.read_csv(kg_file, sep="\t", header=None)
+    df.columns = ['h', 'r', 't']
+
+    nodes = set(df['h']).union(set(df['t']))
+    uniq_edges = set(df['r'])
+    relationships = list(zip(df['h'], df['r'], df['t']))
+
+    print("%d nodes and %d edges (%d unique edges)" % (len(nodes), len(relationships), len(uniq_edges)))
+    return df, nodes, relationships
 
 # Class handling the database connection
 class Neo4jConnector:
@@ -79,27 +93,14 @@ class Neo4jConnector:
         self._driver.close()        
 
 
+# Connect to Neo4j Server
+print("Connecting to Neo4j Server")
+connector = Neo4jConnector(NEO4J_URI, NEO4J_USER, NEO4J_PASSWORD)
+
 # Load Know2BIO Data
 print("Loading Know2BIO edges")
-
 input_file = '../data/2023-08-18_know2bio_whole_kg.txt'
-# input_file = '../data/whole_kg_sampled.txt'
-df = pd.read_csv(input_file,sep="\t",header=None)
-df.columns=['h','r','t']
-
-nodes = set(df['h']).union(set(df['t']))
-uniq_edges = set(df['r'])
-relationships = list(zip(df['h'],df['r'],df['t']))
-
-print("%d nodes and %d edges (%d unique edges)"%(len(nodes),len(relationships),len(uniq_edges)))
-
-
-neo4j_uri = "bolt://localhost:7687"  # The default URI for Neo4j
-neo4j_user = "neo4j"
-neo4j_password = "password"
-
-connector = Neo4jConnector(neo4j_uri, neo4j_user, neo4j_password)
-
+_, nodes, relationships = load_kg(input_file)
 
 with connector._driver.session() as session:
     # Clear graph
@@ -110,20 +111,22 @@ with connector._driver.session() as session:
     print("Creating nodes")
     count = 0
     for node in nodes:
-        node_type,node_name = node.split(":")
-        create_node(session, node_name,node_type)
+        node_type = node.split(":")[0]
+        node_name = ":".join(node.split(":")[1:])
+        # node_type, node_name = node.split(":")
+        create_node(session, node_name, node_type)
         count += 1
-        print(f'Nodes completed: %d out of %d'%(count,len(nodes)), end='\r', flush=True)
-    print("%d nodes created.                        "%count)    
+        print(f'Nodes completed: %d out of %d' % (count,len(nodes)), end='\r', flush=True)
+    print("%d nodes created.                        " % count)
     
     # Create relationships
     print("Creating relationships")
     count = 0
-    for h,r,t in relationships:
+    for h, r, t in relationships:
         create_relationship(session, h, t, r)
         count += 1
-        print(f'Relationships completed: %d out of %d'%(count,len(relationships)), end='\r', flush=True)
-    print("%d relationships created.                "%count)  
+        print(f'Relationships completed: %d out of %d' % (count, len(relationships)), end='\r', flush=True)
+    print("%d relationships created.                " % count)
     
     # Print summary
     node_count, relationship_count = count_nodes_and_relationships(session)

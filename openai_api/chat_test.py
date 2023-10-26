@@ -2,6 +2,8 @@ import os
 import openai
 from query_graph import *
 
+from config import OPENAI_KEY
+from utils.utils import get_project_root
 
 def parse_message(chat_completion):
 
@@ -67,9 +69,8 @@ def start_chat(log_file=None):
         print("Full user input: {}".format(user_input))
 
 
-# Load your API key from an environment variable or secret management service
-openai.api_key_path = '.OPENAI_API_KEY'
-log_folder = './chat_log/'
+OPENAI_API_KEY = OPENAI_KEY
+log_folder = os.path.join(get_project_root,'chat_log')
 log_file = get_log_file(log_folder)
 
 start_chat(log_file=log_file)
