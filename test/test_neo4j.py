@@ -1,14 +1,11 @@
-# test_config.py tests the functionality for config.py
+# test_neo4j.py tests the functionality for neo4j
 
 import unittest
-import os
-from config import NEO4J_URI, NEO4J_USER, NEO4J_PASSWORD, OPENAI_KEY
+from config import NEO4J_URI, NEO4J_USER, NEO4J_PASSWORD
 from neo4j import GraphDatabase
-from utils.utils import get_project_root
-from openai_api.openai_client import call_openai_api
 
 
-class TestConfig(unittest.TestCase):
+class TestNeo4j(unittest.TestCase):
 
     def test_neo4j_config(self):
         self.assertIsNotNone(NEO4J_URI, "NEO4J_URI should not be None")
@@ -18,11 +15,6 @@ class TestConfig(unittest.TestCase):
         print("NEO4J_URI:", NEO4J_URI)
         print("NEO4J_USER:", NEO4J_USER)
         print("NEO4J_PASSWORD:", NEO4J_PASSWORD)
-
-    def test_openai_config(self):
-        self.assertIsNotNone(OPENAI_KEY, "OPENAI_KEY should not be None")
-
-        print("OPENAI_KEY:", OPENAI_KEY)
 
     def test_neo4j_connection(self):
         driver = GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD))
@@ -35,15 +27,6 @@ class TestConfig(unittest.TestCase):
 
         print("Neo4j connection successful\n")
 
-    def test_openai_api_call(self):
-        user_input = "Test user input"
-        response = call_openai_api(user_input)
-        self.assertIsNotNone(response, "OpenAI API response should not be None")
-
-        print(user_input)
-        print(response)
-        print("OpenAI API call successful\n")
-
 
 if __name__ == '__main__':
 
@@ -52,12 +35,10 @@ if __name__ == '__main__':
     # Define test order
     test_order = [
         'test_neo4j_config',
-        'test_openai_config',
-        'test_neo4j_connection',
-        'test_openai_api_call',
+        'test_neo4j_connection'
     ]
 
-    # Run each test individually in order TODO doesn't execute in order...
+    # Run each test individually
     for test_name in test_order:
-        suite = loader.loadTestsFromName(f"{TestConfig.__name__}.{test_name}")
+        suite = loader.loadTestsFromName(f"{TestNeo4j.__name__}.{test_name}")
         unittest.TextTestRunner(verbosity=2).run(suite)
