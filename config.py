@@ -26,3 +26,9 @@ with open(openai_key_path, 'r') as config_file:
     assert config_file.read(1), "OpenAI key file is empty"
     config_file.seek(0)  # Rewind
     OPENAI_KEY = config_file.read().strip()
+
+MESH_ID_CONFIG = {
+    "resolve_abbreviations": True,
+    "linker_name": "mesh",
+    "max_entities_per_mention": 1
+}
