@@ -5,9 +5,9 @@ from config import NEO4J_URI, NEO4J_USER, NEO4J_PASSWORD
 
 
 def clear_graph(session, debug=True):
-    '''
+    """
     This function deletes all nodes and edges in the graph.
-    '''
+    """
     
     query = """
     MATCH (n)
@@ -20,9 +20,9 @@ def clear_graph(session, debug=True):
     
 
 def count_nodes_and_relationships(session, debug=True):
-    '''
+    """
     This function counts the number of nodes and edges in the graph.
-    '''
+    """
     # Count nodes
     node_query = "MATCH (n) RETURN COUNT(n) AS nodeCount"
     nodes = session.run(node_query).single()["nodeCount"]
@@ -39,9 +39,9 @@ def count_nodes_and_relationships(session, debug=True):
 
 
 def create_node(session, node_name, node_type):
-    '''
+    """
     This function creates a new node with node_name and type node_type.
-    '''
+    """
     query = """
     CREATE (n:%s {name:"%s"})
     RETURN n
@@ -51,9 +51,9 @@ def create_node(session, node_name, node_type):
     
     
 def create_relationship(session, entity_1, entity_2, relation):
-    '''
+    """
     This function creates a new relationship between entity_1 and entity_2.
-    '''
+    """
     e1_type = entity_1.split(":")[0]
     e2_type = entity_2.split(":")[0]
     
@@ -84,6 +84,7 @@ def load_kg(kg_file):
     print("%d nodes and %d edges (%d unique edges)" % (len(nodes), len(relationships), len(uniq_edges)))
     return df, nodes, relationships
 
+
 # Class handling the database connection
 class Neo4jConnector:
     def __init__(self, uri, user, password):
@@ -100,6 +101,7 @@ connector = Neo4jConnector(NEO4J_URI, NEO4J_USER, NEO4J_PASSWORD)
 # Load Know2BIO Data
 print("Loading Know2BIO edges")
 input_file = '../data/2023-08-18_know2bio_whole_kg.txt'
+# input_file = '../data/whole_kg_sampled.txt' # Smaller dataset for testing purposes
 _, nodes, relationships = load_kg(input_file)
 
 with connector._driver.session() as session:
@@ -113,7 +115,6 @@ with connector._driver.session() as session:
     for node in nodes:
         node_type = node.split(":")[0]
         node_name = ":".join(node.split(":")[1:])
-        # node_type, node_name = node.split(":")
         create_node(session, node_name, node_type)
         count += 1
         print(f'Nodes completed: %d out of %d' % (count,len(nodes)), end='\r', flush=True)

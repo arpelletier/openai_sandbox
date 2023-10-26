@@ -26,6 +26,9 @@ class TestNeo4j(unittest.TestCase):
             driver.close()
 
         print("Neo4j connection successful\n")
+        # NOTE: First time setting up Neo4j, you may have to change credentials
+        # This command in the Neo4j Browser worked for me
+        # ALTER USER neo4j SET PASSWORD 'password';
 
 
 if __name__ == '__main__':
