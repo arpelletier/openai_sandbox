@@ -4,7 +4,7 @@ from utils.utils import get_project_root
 from NER.spacy_ner import SpacyNER
 from utils.logger import get_log_file, write_to_log  # Import the logger functions
 from openai_api.openai_client import call_openai_api
-
+from neo4j_api.neo4j_api import Neo4j_API
 
 def ner(input):
     """
@@ -47,6 +47,49 @@ def ner(input):
     return mesh_ids, non_disease_entities, relationships
 
 
+def kg(ner_results):
+    """
+    This function identifies relevant nodes in the knowledge graph
+    """
+
+    mesh_ids, non_disease_entities, relationships = ner_results
+
+    # Connect to the Neo4j API
+    neo4j_api = Neo4j_API()
+
+    # Check the MeSH terms are in the graph if any
+    for mesh_id in mesh_ids:
+        mesh_query = '''
+        MATCH (disease:MeSH_Disease {name: 'MeSH_Disease:%s'})
+        '''
+        result = neo4j_api.search(mesh_query)
+
+        if not result:
+            print("Mesh id {} not in graph".format(mesh_id))
+
+    # Check the non-disease entities are in the graph if any
+    for entity in non_disease_entities:
+        # entity_query = '''
+        # MATCH (entity:Entity {name: '%s'})
+        # '''
+        # result = neo4j_api.search(entity_query)
+        #
+        # if not result:
+        #     print("Entity {} not in graph".format(entity))
+        temp = 'drug' # How to find a generalized entity type? Check node types to find a semantic match?
+        print("Not yet implemented")
+
+    # Check the relationships are in the graph if any
+    for rel in relationships:
+        # rel_query = '''
+        # MATCH ()-[r:%s]->()
+        # '''
+        # result = neo4j_api.search(rel_query)
+        #
+        # if not result:
+        #     print("Relationship {} not in graph".format(rel))
+        temp = 'treats' # Check relationship types to find a semantic match?
+        print("Not yet implemented")
 
 
 def start_chat(log_file=None):
@@ -57,6 +100,9 @@ def start_chat(log_file=None):
 
         # Identify entities
         ner_results = ner(user_input)
+
+        # Identifies relevant nodes in the knowledge graph
+        kg_results = kg(ner_results)
 
         # Send to Open AI API
         # response = call_openai_api(user_input)

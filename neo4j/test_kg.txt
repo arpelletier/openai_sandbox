@@ -1,4 +1,0 @@
-A	related_to	B
-A	related_to	C
-B	related_to	D
-C	related_to	D
