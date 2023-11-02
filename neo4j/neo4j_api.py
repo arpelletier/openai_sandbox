@@ -8,18 +8,21 @@ def get_node_type_properties():
     This function returns the node schema of the graph.
     The results are returned as nodeType to a list of protertyName (node features)
     """
-    with GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD)) as driver:
-        result = driver.execute_query("call db.schema.nodeTypeProperties", database_="neo4j",
-                                      routing_=RoutingControl.READ)
+    query = "call db.schema.nodeTypeProperties"
 
-        # Extract nodeType and propertyName using regular expressions
-        records = re.findall(r"nodeType='([^']+)'.*?propertyName='([^']+)'", str(result))
+    # Make query to Neo4j
+    result = search(query)
 
-        # Create a dictionary from the extracted values
-        node_type_to_property = {nodeType.replace('`', '').replace(':', ''): propertyName for nodeType, propertyName in
-                                 records}
+    # Parse results
+    node_types = {}
+    for rec in result.records:
+        assert len(rec['nodeLabels']) == 1, "Node types should be unique"
 
-        return node_type_to_property
+        node_type = rec['nodeLabels'][0]
+        node_properties = rec['propertyName']
+        node_types[node_type] = node_properties
+
+    return node_types
 
 
 def get_rel_types():
@@ -27,50 +30,51 @@ def get_rel_types():
     This function returns the relationship types in the graph as a list.
     """
 
-    with GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD)) as driver:
-        query = '''MATCH ()-[r]->()
-        RETURN DISTINCT type(r) AS relationshipType;
-        '''
-        result = driver.execute_query(query, database_="neo4j", routing_=RoutingControl.READ)
+    query = '''MATCH ()-[r]->()
+            RETURN DISTINCT type(r) AS relationshipType;
+            '''
 
-        # Extract relationshipType values using regular expressions
-        relationship_types = re.findall(r"relationshipType='(.*?)'", str(result))
+    # Make query to Neo4j
+    result = search(query)
 
-        return relationship_types
+    # Parse results
+    relationships =[]
+    for rec in result.records:
+        relationships.append(rec['relationshipType'])
+
+    return relationships
 
 
 def get_uniq_relation_pairs():
     """
     This function returns the unique relationships and the node types it connects.
     """
+    query = '''MATCH (n1)-[r]->(n2)
+            RETURN DISTINCT type(r) AS relationshipType, labels(n1) AS nodeType1, labels(n2) AS nodeType2;
+            '''
 
-    with GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD)) as driver:
-        query = '''MATCH (n1)-[r]->(n2)
-        RETURN DISTINCT type(r) AS relationshipType, labels(n1) AS nodeType1, labels(n2) AS nodeType2;
-        '''
-        result = driver.execute_query(query, database_="neo4j", routing_=RoutingControl.READ)
+    # Make query to Neo4j
+    result = search(query)
 
-        # Define a regular expression pattern to match the relevant information
-        pattern = r"relationshipType='(.*?)' nodeType1=\[(.*?)\] nodeType2=\[(.*?)\]"
+    # Parse results
+    relationships = []
+    for rec in result.records:
+        assert len(rec['nodeType1']) == 1 and len(rec['nodeType2']) == 1, "Node types should be unique"
 
-        # Use the re.findall() function to extract matches
-        matches = re.findall(pattern, str(result))
+        res = (rec['nodeType1'][0], rec['relationshipType'], rec['nodeType2'][0])
+        relationships.append(res)
 
-        # Create a list of tuples (nodeType1, relationshipType, nodeType2) #TODO double check this logic
-        res = [(match[1].split(', ')[0].replace("'", ""), match[0], match[2].split(', ')[0].replace("'", "")) for match
-               in matches]
+    return relationships
 
-        return res
-
-
-def find_disease_name(mesh_ids):
-    with GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD)) as driver:
-        query = '''MATCH (disease:MeSH_Disease {name: 'MeSH_Disease:%s'})
-        RETURN disease
-        ''' % (list(mesh_ids.values())[0][0])
-        result = driver.execute_query(query, database_="neo4j", routing_=RoutingControl.READ)
-
-        return query, result
+#
+# def find_disease_name(mesh_ids):
+#     with GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD)) as driver:
+#         query = '''MATCH (disease:MeSH_Disease {name: 'MeSH_Disease:%s'})
+#         RETURN disease
+#         ''' % (list(mesh_ids.values())[0][0])
+#         result = driver.execute_query(query, database_="neo4j", routing_=RoutingControl.READ)
+#
+#         return query, result
 
 
 def verify_connection():
@@ -147,7 +151,14 @@ def example_node(n=10):
     RETURN n LIMIT %s
     ''' % (idx_to_node[int(user_input)], n)
     result = search(query)
-    return result
+
+    # Parse results
+    node_names = []
+    if result:
+        for rec in result.records:
+            node_names.append(rec['n']['name'])
+
+    return node_names
 
 
 def example_relationship(n=10):
@@ -176,12 +187,22 @@ def example_relationship(n=10):
     RETURN n1, r, n2 LIMIT %s
     ''' % (idx_to_rel[int(user_input)], n)
     result = search(query)
-    return result
+
+    # Parse results
+    relationships = []
+    if result:
+        for rec in result.records:
+            n1 = rec['n1']['name']
+            r = rec['r'].type
+            n2 = rec['n2']['name']
+            relationships.append((n1, r, n2))
+
+    return relationships
 
 
 def interactive():
     interactive_options = {'q': ('Query', 'Query the Neo4j Database with your own Cypher command'),
-                           'p': ('Node Properties', 'Get the node schema of the graph'),
+                           'n': ('Node Properties', 'Get the node schema of the graph'),
                            'r': ('Relationships', 'Get the relationship types in the graph'),
                            'u': ('Unique relationships', 'Get the unique relationships and the node types it connects'),
                            'en': ('Example node', 'Get examples of nodes in the graph based on node type'),
@@ -198,8 +219,8 @@ def interactive():
         if user_input == 'q':
             print("Query.")
             query()
-        elif user_input == 'p':
-            print("Properties.")
+        elif user_input == 'n':
+            print("Node Properties.")
             result = get_node_type_properties()
             for p, v in result.items():
                 print(p, "\tNode properties: ", v)
@@ -219,11 +240,13 @@ def interactive():
         elif user_input == 'en':
             print("Example node.")
             result = example_node()
-            print(result)
+            for r in result:
+                print(r)
         elif user_input == 'er':
             print("Example relationship.")
             result = example_relationship()
-            print(result)
+            for r in result:
+                print(r)
 
 
 if __name__ == "__main__":
