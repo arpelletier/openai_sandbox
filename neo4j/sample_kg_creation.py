@@ -1,7 +1,3 @@
-'''
-Author: Joseph Ramirez
-Created: 10/23/23 11:00 PM
-'''
 import pandas as pd
 from neo4j import GraphDatabase, RoutingControl
 
