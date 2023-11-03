@@ -69,6 +69,13 @@ def kg(ner_results):
 
     # Check the non-disease entities are in the graph if any
     for entity in non_disease_entities:
+        '''
+        TODO Joseph
+        - Replace 'Entity' with the Node Type identified from Neo4j API
+            e.g., neo4j_api.get_node_type_properties() -> find the closest match. Maybe ask LLM to identify best match?
+        - After creating the query, query the KG see if the node exists (if it's a class-based node like 'drug',
+          then get a few examples? Otherwise if it's a specific drug with an ID, check it exists.
+        '''
         # entity_query = '''
         # MATCH (entity:Entity {name: '%s'})
         # '''
@@ -81,6 +88,13 @@ def kg(ner_results):
 
     # Check the relationships are in the graph if any
     for rel in relationships:
+        '''
+        TODO Joseph
+        - Similar to above, but use neo4j_api.get_rel_types() to find the closest match.
+        - To consider, how do we know which node types the relationships needs? This means we have to look at the 
+          original query, in the NER step and identify head and tail of the relationship... Then we can use the
+          neo4j_api.get_uniq_relation_pairs() to find the closest match. 
+        '''
         # rel_query = '''
         # MATCH ()-[r:%s]->()
         # '''
