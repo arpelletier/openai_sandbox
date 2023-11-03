@@ -95,7 +95,7 @@ class Neo4j_API:
         This function handles execution of a Cypher query to Neo4j and returns output.
         """
         try:
-            return self.driver.execute_query(query, database_="neo4j_api", routing_=RoutingControl.READ)
+            return self.driver.execute_query(query, database_="neo4j", routing_=RoutingControl.READ)
         except Exception as e:
             print("Query was unsuccessful.")
             print("Error: {}".format(e))
