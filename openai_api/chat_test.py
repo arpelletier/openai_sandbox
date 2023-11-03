@@ -1,8 +1,13 @@
 import os
 import openai
-from query_graph import *
+import sys
 
+sys.path.append("../")
 from config import OPENAI_KEY
+
+# Changed the open ai key here
+openai.api_key = OPENAI_KEY
+
 from utils.utils import get_project_root
 
 def parse_message(chat_completion):
@@ -43,19 +48,22 @@ def write_to_log(log_file, text):
         print(f"An error occured: {str(e)}")
 
 
-def start_chat(log_file=None):
-    
-    first_chat = True
+def start_chat(log_file=None, text_file_input=False, text_file_path='query.txt'):
+    print("MADE IT INTO THE CHAT FUNCTION")
+
+    first_pass = True
     while True:
         # Get user input
-        user_input = input("User: ")
-
-        # Get the relevant information 
-        if first_chat:
-            schema = get_schema()
-            first_chat = False
-            user_input += "\n The schema for the graph is {}".format(schema)
+        if text_file_input and first_pass:
+            first_pass = False
+            with open(text_file_path) as f:
+                user_input = '\n'.join(f.readlines())
+            print("User: {}".format(user_input))
+        else:
+            user_input = input("User: ")
         
+        print("Got the input.")
+
         # Send to API
         chat_completion = openai.ChatCompletion.create(model="gpt-3.5-turbo", messages=[{"role": "user", "content": user_input}])
         response = parse_message(chat_completion)
@@ -65,14 +73,15 @@ def start_chat(log_file=None):
         if log_file:
             write_to_log(log_file, "User: "+ user_input)
             write_to_log(log_file, response)
-        
-        print("Full user input: {}".format(user_input))
 
+# Send output to log folder
+if __name__ == "__main__":
+    log_folder = os.path.join('../chat_log')
+    log_file = get_log_file(log_folder)
 
-OPENAI_API_KEY = OPENAI_KEY
-log_folder = os.path.join(get_project_root,'chat_log')
-log_file = get_log_file(log_folder)
-
-start_chat(log_file=log_file)
-
+    # Start chat
+    if len(sys.argv) >= 2:
+        start_chat(log_file, True)
+    else:
+        start_chat(log_file)
 

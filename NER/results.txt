@@ -52,7 +52,10 @@ DISEASES: [('lung cancer', 'DISEASE')]
 OTHER ENTITIES: [('lung cancer', 'CANCER')]
 PARTS OF SPEECH: [('How', 'SCONJ'), ('long', 'ADV'), ('are', 'AUX'), ('most', 'ADJ'), ('treatments', 'NOUN'), ('for', 'ADP'), ('lung', 'NOUN'), ('cancer', 'NOUN'), ('good', 'ADJ'), ('for', 'ADP'), ('?', 'PUNCT'), ('\n', 'SPACE')]
 
-PROMPT: What genes are most important in colon cancer and diabetes?
+PROMPT: What genes are most important in colon cancer and diabetes? 
+# Something that is more doable
+# need 2 queries for gene-colon cancer, gene-diabetes
+# Could do a union (can list what is important for either and both) or interaction
 
 DISEASES: [('colon cancer', 'DISEASE'), ('diabetes', 'DISEASE')]
 OTHER ENTITIES: [('colon cancer', 'CANCER')]

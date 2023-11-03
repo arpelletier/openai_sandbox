@@ -1,4 +1,6 @@
 # test_openai.py tests the functionality for the OpenAI API
+import sys
+sys.path.append('../')
 
 import unittest
 from config import OPENAI_KEY
@@ -23,7 +25,7 @@ class TestOpenAI(unittest.TestCase):
 
 
 if __name__ == '__main__':
-
+    unittest.main()
     loader = unittest.TestLoader()
 
     # Define test order

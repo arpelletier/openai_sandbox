@@ -1,5 +1,8 @@
 # test_neo4j.py tests the functionality for neo4j_api
 
+import sys
+sys.path.append('../')
+
 import unittest
 from config import NEO4J_URI, NEO4J_USER, NEO4J_PASSWORD
 from neo4j import GraphDatabase
@@ -32,7 +35,7 @@ class TestNeo4j(unittest.TestCase):
 
 
 if __name__ == '__main__':
-
+    unittest.main()
     loader = unittest.TestLoader()
 
     # Define test order
