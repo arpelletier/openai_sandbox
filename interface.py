@@ -1,89 +1,119 @@
 import os
 import openai
-
-from config import OPENAI_KEY
 from utils.utils import get_project_root
-from NER.spacy_ner import spacy_ner
-
-import sys
-sys.path.insert(1, '/NER/')
-
-
-def parse_message(chat_completion):
-
-    message = chat_completion['choices'][0]['message']
-
-    role = message['role'].capitalize()
-    content = message['content']
-
-    return "%s: %s"%(role,content)
-
-
-def get_log_file(directory):
-    try:
-        # Create the output directory if it doesn't exist
-        if not os.path.exists(directory):
-            os.makedirs(directory)
-
-        # Find the next available log file
-        log_file = None
-        i = 0
-        while True:
-            log_file = os.path.join(directory, f"log_{i}.txt")
-            if not os.path.exists(log_file):
-                break
-            i += 1
-
-        return log_file
-    except Exception as e:
-        print(f"An error occurred: {str(e)}")
-
-
-def write_to_log(log_file, text):
-    try:
-        with open(log_file, 'a') as file:
-            file.write(text + '\n')
-    except Exception as e:
-        print(f"An error occured: {str(e)}")
-
+from NER.spacy_ner import SpacyNER
+from utils.logger import get_log_file, write_to_log  # Import the logger functions
+from openai_api.openai_client import call_openai_api
+from neo4j_api.neo4j_api import Neo4j_API
 
 def ner(input):
     """
     Where we would do NER on the next input.
     """
     print("Named Entity Recognition module:")
-    print(input)
+
+    ner = SpacyNER()
+    disease_ner_results, scientific_entity_ner_results, pos_results, mesh_ids = ner.get_entities(input)
+
+    # Look for mesh ids
+    if mesh_ids:
+        print("MESH IDS: {}".format(mesh_ids))
+        disease_entities = [d.text for d in mesh_ids.keys()]
+
+        # Get the mesh ids
+        mesh_list = [mesh_ids[entity] for entity in mesh_ids.keys()]
+
+        # Identify non-disease entities
+        non_disease_entities = [entity for entity, e_type in scientific_entity_ner_results if
+                                entity not in disease_entities]
+        for entity, e_type in pos_results:
+            if e_type == 'NOUN':
+                in_diseases = False
+                for d in disease_entities:
+                    if entity in d:
+                        in_diseases = True
+                if not in_diseases:
+                    non_disease_entities += [entity]
+
+        relationships = []
+        for entity, e_type in pos_results:
+
+            if e_type == 'VERB':
+                relationships += [entity]
+
+    print("Non disease entities: {}".format(non_disease_entities))
+    print("Relationships: {}".format(relationships))
+
+    return mesh_ids, non_disease_entities, relationships
 
 
+def kg(ner_results):
+    """
+    This function identifies relevant nodes in the knowledge graph
+    """
 
-    return input
+    mesh_ids, non_disease_entities, relationships = ner_results
+
+    # Connect to the Neo4j API
+    neo4j_api = Neo4j_API()
+
+    # Check the MeSH terms are in the graph if any
+    for mesh_id in mesh_ids:
+        mesh_query = '''
+        MATCH (disease:MeSH_Disease {name: 'MeSH_Disease:%s'})
+        '''
+        result = neo4j_api.search(mesh_query)
+
+        if not result:
+            print("Mesh id {} not in graph".format(mesh_id))
+
+    # Check the non-disease entities are in the graph if any
+    for entity in non_disease_entities:
+        # entity_query = '''
+        # MATCH (entity:Entity {name: '%s'})
+        # '''
+        # result = neo4j_api.search(entity_query)
+        #
+        # if not result:
+        #     print("Entity {} not in graph".format(entity))
+        temp = 'drug' # How to find a generalized entity type? Check node types to find a semantic match?
+        print("Not yet implemented")
+
+    # Check the relationships are in the graph if any
+    for rel in relationships:
+        # rel_query = '''
+        # MATCH ()-[r:%s]->()
+        # '''
+        # result = neo4j_api.search(rel_query)
+        #
+        # if not result:
+        #     print("Relationship {} not in graph".format(rel))
+        temp = 'treats' # Check relationship types to find a semantic match?
+        print("Not yet implemented")
+
 
 def start_chat(log_file=None):
-    
     while True:
         # Get user input
-        user_input = input("User: ")
- 
+        # user_input = input("User: ")
+        user_input = "What drugs treat lung cancer?"
+
         # Identify entities
         ner_results = ner(user_input)
-        response = ner_results
 
-        # Send to API
-#        chat_completion = openai_api.ChatCompletion.create(model="gpt-3.5-turbo", messages=[{"role": "user", "content": user_input}])
-#        response = parse_message(chat_completion)
+        # Identifies relevant nodes in the knowledge graph
+        kg_results = kg(ner_results)
 
-#        print(response)
+        # Send to Open AI API
+        # response = call_openai_api(user_input)
 
         if log_file:
-            write_to_log(log_file, "User: "+user_input)
+            write_to_log(log_file, "User: " + user_input)
             write_to_log(log_file, response)
 
 
+if __name__ == "__main__":
+    log_folder = os.path.join(get_project_root(), 'chat_log')
+    log_file = get_log_file(log_folder)
 
-OPENAI_API_KEY = OPENAI_KEY
-log_folder = os.path.join(get_project_root,'chat_log')
-log_file = get_log_file(log_folder)
-
-start_chat(log_file=log_file)
-
-
+    start_chat(log_file=log_file)

@@ -23,11 +23,13 @@ class SpacyNER:
         document = self.pos_nlp(text)
         return [(token.text, token.pos_) for token in document]
 
-    def show_entites(self, text: str):
-        print("DISEASES: {}".format(self.disease_ner(text)))
-        print("OTHER ENTITIES: {}".format(self.scientific_entity_ner(text)))
-        print("PARTS OF SPEECH: {}".format(self.part_of_speech_tags(text)))
-        print("MESH IDS: {}".format(self.get_mesh_ids(text)))
+    def show_entities(self, text: str):
+        disease_ner_results, scientific_entity_ner_results, pos_results, mesh_ids = self.get_entites(text)
+
+        print("DISEASES: {}".format(disease_ner_results))
+        print("OTHER ENTITIES: {}".format(scientific_entity_ner_results))
+        print("PARTS OF SPEECH: {}".format(pos_results))
+        print("MESH IDS: {}".format(mesh_ids))
 
     def get_mesh_ids(self, text: str):
         """Return mesh ids for named entites."""
@@ -47,9 +49,17 @@ class SpacyNER:
                 res[e].append(cui)
         return res
 
+    def get_entities(self, text: str):
+        disease_ner_results = self.disease_ner(text)
+        scientific_entity_ner_results = self.scientific_entity_ner(text)
+        pos_results = self.part_of_speech_tags(text)
+        mesh_ids = self.get_mesh_ids(text)
+
+        return disease_ner_results, scientific_entity_ner_results, pos_results, mesh_ids
+
 
 if __name__ == "__main__":
     prompt = "What drugs treat Crohn's disease?"
 
     ner = SpacyNER()
-    ner.show_entites(prompt)
+    ner.show_entities(prompt)

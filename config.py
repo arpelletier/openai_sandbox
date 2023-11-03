@@ -2,8 +2,8 @@
 
 import json
 import os
-import sys
 from utils.utils import get_project_root
+
 # Project base directory
 project_root = get_project_root()
 
@@ -11,7 +11,7 @@ project_root = get_project_root()
 neo4j_config_path = os.path.join(project_root, 'config/neo4j_config.json')
 openai_key_path = os.path.join(project_root, 'config/openai_key.txt')
 
-# Load the neo4j configuration file
+# Load the neo4j_api configuration file
 with open(neo4j_config_path, 'r') as config_file:
     config_data = json.load(config_file)
 
