@@ -47,10 +47,11 @@ def write_to_log(log_file, text):
     except Exception as e:
         print(f"An error occured: {str(e)}")
 
+def single_chat(user_input):
+    chat_completion = openai.ChatCompletion.create(model="gpt-3.5-turbo", messages=[{"role": "user", "content": user_input}])
+    return parse_message(chat_completion)
 
 def start_chat(log_file=None, text_file_input=False, text_file_path='query.txt'):
-    print("MADE IT INTO THE CHAT FUNCTION")
-
     first_pass = True
     while True:
         # Get user input

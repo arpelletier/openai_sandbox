@@ -28,6 +28,9 @@ class Neo4j_API:
             node_types[node_type] = node_properties
 
         return node_types
+    
+    def get_node_types(self):
+        return self.get_node_type_properties().keys()
 
     def get_rel_types(self):
         """
