@@ -1,6 +1,14 @@
+import os
+import sys
+sys.path.append("../")
 from neo4j import GraphDatabase, RoutingControl
 from config import NEO4J_URI, NEO4J_USER, NEO4J_PASSWORD
+from utils.logger import get_log_file, write_to_log 
 
+def log_neo4j_resuts(text):
+    log_folder = os.path.join('../neo4j_log') # CHANGED THIS LINE
+    log_file = get_log_file(log_folder)
+    write_to_log(log_file, text)
 
 class Neo4j_API:
 
@@ -26,6 +34,13 @@ class Neo4j_API:
             node_type = rec['nodeLabels'][0]
             node_properties = rec['propertyName']
             node_types[node_type] = node_properties
+        
+        # Write to log
+        text = """
+        QUERY: {}
+        RESPONSE: {}
+        """.format(query, node_types)
+        log_neo4j_resuts(text)
 
         return node_types
     
@@ -48,6 +63,13 @@ class Neo4j_API:
         relationships =[]
         for rec in result.records:
             relationships.append(rec['relationshipType'])
+        
+        # Write to log
+        text = """
+        QUERY: {}
+        RESPONSE: {}
+        """.format(query, relationships)
+        log_neo4j_resuts(text)
 
         return relationships
 
@@ -69,6 +91,13 @@ class Neo4j_API:
 
             res = (rec['nodeType1'][0], rec['relationshipType'], rec['nodeType2'][0])
             relationships.append(res)
+        
+        # Write to log
+        text = """
+        QUERY: {}
+        RESPONSE: {}
+        """.format(query, relationships)
+        log_neo4j_resuts(text)
 
         return relationships
 
@@ -98,7 +127,8 @@ class Neo4j_API:
         This function handles execution of a Cypher query to Neo4j and returns output.
         """
         try:
-            return self.driver.execute_query(query, database_="neo4j", routing_=RoutingControl.READ)
+            response = self.driver.execute_query(query, database_="neo4j", routing_=RoutingControl.READ)
+            return response
         except Exception as e:
             print("Query was unsuccessful.")
             print("Error: {}".format(e))
@@ -156,6 +186,13 @@ class Neo4j_API:
             for rec in result.records:
                 node_names.append(rec['n']['name'])
 
+        # Write to log
+        text = """
+        QUERY: {}
+        RESPONSE: {}
+        """.format(query, node_names)
+        log_neo4j_resuts(text)
+        
         return node_names
 
     def example_relationship(self, n=10):
@@ -193,6 +230,13 @@ class Neo4j_API:
                 r = rec['r'].type
                 n2 = rec['n2']['name']
                 relationships.append((n1, r, n2))
+        
+        # Write to log
+        text = """
+        QUERY: {}
+        RESPONSE: {}
+        """.format(query, relationships)
+        log_neo4j_resuts(text)
 
         return relationships
 
@@ -254,7 +298,6 @@ def interactive():
             result = neo4j_api.example_relationship()
             for r in result:
                 print(r)
-
 
 if __name__ == "__main__":
     interactive()

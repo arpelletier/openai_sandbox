@@ -47,9 +47,16 @@ def write_to_log(log_file, text):
     except Exception as e:
         print(f"An error occured: {str(e)}")
 
-def single_chat(user_input):
+def single_chat(user_input, timeout_threshold=100):
+    # TODO: if takes longer than thresh then skip/rerun
     chat_completion = openai.ChatCompletion.create(model="gpt-3.5-turbo", messages=[{"role": "user", "content": user_input}])
-    return parse_message(chat_completion)
+    message = parse_message(chat_completion)
+    # Write to log as well
+    log_folder = os.path.join('../chat_log')
+    log_file = get_log_file(log_folder)
+    write_to_log(log_file, "User: "+ user_input)
+    write_to_log(log_file, message)
+    return message
 
 def start_chat(log_file=None, text_file_input=False, text_file_path='query.txt'):
     first_pass = True
@@ -66,6 +73,10 @@ def start_chat(log_file=None, text_file_input=False, text_file_path='query.txt')
         print("Got the input.")
 
         # Send to API
+
+        # Just have start chat call single chat
+        # BUT instead of making a new chat every time just have it continue with the previous context
+        # Boolean flag that returns whether
         chat_completion = openai.ChatCompletion.create(model="gpt-3.5-turbo", messages=[{"role": "user", "content": user_input}])
         response = parse_message(chat_completion)
 

@@ -4,3 +4,4 @@ data
 config
 scratch
 output
+neo4j_log
