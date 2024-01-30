@@ -6,7 +6,7 @@ from config import NEO4J_URI, NEO4J_USER, NEO4J_PASSWORD
 from utils.logger import get_log_file, write_to_log 
 
 def log_neo4j_resuts(text):
-    log_folder = os.path.join('../neo4j_log') # CHANGED THIS LINE
+    log_folder = os.path.join('../neo4j_log')
     log_file = get_log_file(log_folder)
     write_to_log(log_file, text)
 
@@ -46,6 +46,13 @@ class Neo4j_API:
     
     def get_node_types(self):
         return self.get_node_type_properties().keys()
+    
+    def get_node_types_as_csv(self):
+        """
+        Return a dict of the node types.
+        From get_node_type_properties() method.
+        """
+        return self.get_node_type_properties()
 
     def get_rel_types(self):
         """
@@ -100,16 +107,6 @@ class Neo4j_API:
         log_neo4j_resuts(text)
 
         return relationships
-
-    #
-    # def find_disease_name(mesh_ids):
-    #     with GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USER, NEO4J_PASSWORD)) as driver:
-    #         query = '''MATCH (disease:MeSH_Disease {name: 'MeSH_Disease:%s'})
-    #         RETURN disease
-    #         ''' % (list(mesh_ids.values())[0][0])
-    #         result = driver.execute_query(query, database_="neo4j_api", routing_=RoutingControl.READ)
-    #
-    #         return query, result
 
     def verify_connection(self):
         """
@@ -274,13 +271,16 @@ def interactive():
             print("Node Properties.")
             result = neo4j_api.get_node_type_properties()
             for p, v in result.items():
-                print(p, "\tNode properties: ", v)
+                print(p + ",{}".format(v.split()))
             print("Total number of node types: ", len(result), "\n")
         elif user_input == 'r':
             print("Relationships.")
             result = neo4j_api.get_rel_types()
             for r in result:
-                print(r)
+                if r[-1] == '>':
+                    print("\"`{}`\"".format(r))
+                else:
+                    print("\"{}\"".format(r))
             print("Total number of relationships: ", len(result), "\n")
         elif user_input == 'u':
             print("Unique relationships.")

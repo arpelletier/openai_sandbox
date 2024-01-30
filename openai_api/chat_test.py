@@ -1,18 +1,19 @@
 import os
-import openai
+from openai import OpenAI
+
+client = OpenAI(api_key=OPENAI_KEY)
 import sys
 
 sys.path.append("../")
 from config import OPENAI_KEY
 
 # Changed the open ai key here
-openai.api_key = OPENAI_KEY
 
 from utils.utils import get_project_root
 
 def parse_message(chat_completion):
 
-    message = chat_completion['choices'][0]['message']
+    message = chat_completion.choices[0].message
 
     role = message['role'].capitalize()
     content = message['content']
@@ -49,7 +50,7 @@ def write_to_log(log_file, text):
 
 def single_chat(user_input, timeout_threshold=100):
     # TODO: if takes longer than thresh then skip/rerun
-    chat_completion = openai.ChatCompletion.create(model="gpt-3.5-turbo", messages=[{"role": "user", "content": user_input}])
+    chat_completion = client.chat.completions.create(model="gpt-3.5-turbo", messages=[{"role": "user", "content": user_input}])
     message = parse_message(chat_completion)
     # Write to log as well
     log_folder = os.path.join('../chat_log')
@@ -77,7 +78,7 @@ def start_chat(log_file=None, text_file_input=False, text_file_path='query.txt')
         # Just have start chat call single chat
         # BUT instead of making a new chat every time just have it continue with the previous context
         # Boolean flag that returns whether
-        chat_completion = openai.ChatCompletion.create(model="gpt-3.5-turbo", messages=[{"role": "user", "content": user_input}])
+        chat_completion = client.chat.completions.create(model="gpt-3.5-turbo", messages=[{"role": "user", "content": user_input}])
         response = parse_message(chat_completion)
 
         print(response)

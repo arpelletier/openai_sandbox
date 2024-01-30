@@ -1,8 +1,17 @@
-import openai
+# NOTE: There has been an update to the Open AI API
+from openai import OpenAI
+
+client = OpenAI(api_key=OPENAI_KEY)
 import sys
 import os
+from transformers import pipeline
+
 sys.path.append('../')
 from config import OPENAI_KEY
+
+NODES = ...
+EDGES = ...
+SUMMARIZER = pipeline('summarization', model="Falconsai/text_summarization")
 
 def get_log_file(directory):
     """
@@ -38,18 +47,25 @@ def write_to_log(log_file, text):
 class OpenAI_API():
 
     def __init__(self):
-        openai.api_key = OPENAI_KEY
         self.chat_model = None
         temp = self.get_chat_model()
         self.chat_model = temp
-        self.messages = [{"role": "system", "content": "You are a helpful assistant."}]
+        # NOTE: Lang Chain may be useful 
+        # TODO: Look at how this can manage context
+        # TODO: Having something that the LLM can always access for the kg section if it is relevant
+        # NOTE: Token limit may have been expanded in recent editions
+        # https://python.langchain.com/docs/get_started/introduction
+        self.messages = [{"role": "system", "content": "You are a helpful assistant."}, 
+                         {"role": "user", "content": "Here are the node names in the graph: {}".format(NODES)},
+                         {"role": "user", "content": "Here are the names of the edges in the graph: {}".format(EDGES)}]
+
 
     def get_chat_model(self):
         if self.chat_model:
             return self.chat_model
         
         messages = [{"role": "user", "content": "Hello"}]
-        chat_completion = openai.ChatCompletion.create(model="gpt-3.5-turbo", messages=messages)
+        chat_completion = client.chat.completions.create(model="gpt-3.5-turbo", messages=messages)
         return chat_completion
 
     def call_openai_api(self, user_input):
@@ -66,7 +82,7 @@ class OpenAI_API():
         Parse message after the API has returned a call. 
         Return the contents of the message to be more readable.
         """
-        message = chat_completion['choices'][0]['message']
+        message = chat_completion.choices[0].message
 
         role = message['role'].capitalize()
         content = message['content']
@@ -86,25 +102,114 @@ class OpenAI_API():
     
     def get_context_length(self):
         return len(self.messages)
-
-    def single_chat(self, user_input, timeout_threshold=100):
-        self.messages.append({"role": "user", "content": user_input})
-        chat_completion = openai.ChatCompletion.create(model="gpt-3.5-turbo", messages=self.messages)
-        message = self.parse_message(chat_completion)
-        # Write to log as well
+    
+    def single_chat(self, summarize=False):
+        # For a single chat, just write everything that occurs in a conversation in 1 log file
         log_folder = os.path.join('../chat_log')
         log_file = get_log_file(log_folder)
-        write_to_log(log_file, "User: "+ user_input)
-        write_to_log(log_file, message)
-        return message, self.messages
+        write_to_log(log_file, "SUMMARIZER IS {}".format(summarize))
+        write_to_log(log_file, "---------------------------------------------------------------------------")
+        added_message = ""
 
+        # Continue a conversation indefinitely
+        iter = 0
+        while True:
+            user_input = input("User: ")
+            if not summarize:
+                # If we are not summarizing, then we simply continue to add contexts
+                self.messages.append({"role": "user", "content": user_input})
+                added_message = user_input
+            else:
+                # Summarize the user inputs every time
+                if iter == 0:
+                    self.messages.append({"role": "user", "content": user_input})
+                    added_message = user_input
+                else:
+                    text = self.messages[-2]["content"] + user_input
+                    summary = SUMMARIZER(text, max_length=max(250, len(text.split())), min_length=min(250, len(text.split())), do_sample=False)
+                    self.messages[-2]["content"] = summary[0]['summary_text']
+                    added_message = summary[0]['summary_text']
+                    assistant_response = self.messages[-1]["content"]
 
-# temp = OpenAI_API()
-# chat_temp = temp.get_chat_model()
-# import pdb;pdb.set_trace()
+            # Complete the chat
+            if iter == 0 or iter == 1:
+                chat_completion = client.chat.completions.create(model="gpt-3.5-turbo", messages=self.messages)
+            else:
+                chat_completion = client.chat.completions.create(model="gpt-3.5-turbo", messages=self.messages[:-1])
+            message = self.parse_message(chat_completion)
+
+            # Add the response to the context
+            if not summarize:
+                self.messages.append({"role": "assistant", "content": message[11:]})
+            else:
+                if iter == 0 or iter == 1:
+                    self.messages.append({"role": "assistant", "content": message[11:]})
+                else:
+                    text = assistant_response + message
+                    summary = SUMMARIZER(text, max_length=max(250, len(text.split())), min_length=min(250, len(text.split())), do_sample=False)
+                    self.messages[-1]["content"] = summary[0]['summary_text']
+
+            # Write to log as well
+            write_to_log(log_file, "User or summarized query: "+ added_message)
+            write_to_log(log_file, message)
+            write_to_log(log_file, "---------------------------------------------------------------------------")
+            print(self.messages)
+            iter += 1
+
+    # def single_chat(self, summarize=False):
+    #     # For a single chat, just write everything that occurs in a conversation in 1 log file
+    #     log_folder = os.path.join('../chat_log')
+    #     log_file = get_log_file(log_folder)
+    #     write_to_log(log_file, "SUMMARIZER IS {}".format(summarize))
+    #     write_to_log(log_file, "---------------------------------------------------------------------------")
+    #     added_message = ""
+
+    #     # Continue a conversation indefinitely
+    #     iter = 0
+    #     while True:
+    #         user_input = input("User: ")
+    #         if not summarize:
+    #             # If we are not summarizing, then we simply continue to add contexts
+    #             self.messages.append({"role": "user", "content": user_input})
+    #             added_message = user_input
+    #         else:
+    #             # Summarize the user inputs every time
+    #             if iter == 0 or iter == 1:
+    #                 self.messages.append({"role": "user", "content": user_input})
+    #                 added_message = user_input
+    #             else:
+    #                 text = self.messages[-2]["content"] + user_input
+    #                 summary = SUMMARIZER(text, max_length=max(250, len(text.split())), min_length=min(250, len(text.split())), do_sample=False)
+    #                 self.messages[-2]["content"] = summary[0]['summary_text']
+    #                 added_message = summary[0]['summary_text']
+    #                 assistant_response = self.messages[-1]["content"]
+
+    #         # Complete the chat
+    #         if iter == 0 or iter == 1:
+    #             chat_completion = openai.ChatCompletion.create(model="gpt-3.5-turbo", messages=self.messages)
+    #         else:
+    #             chat_completion = openai.ChatCompletion.create(model="gpt-3.5-turbo", messages=self.messages[:-1])
+    #         message = self.parse_message(chat_completion)
+
+    #         # Add the response to the context
+    #         if not summarize:
+    #             self.messages.append({"role": "assistant", "content": message[11:]})
+    #         else:
+    #             if iter == 0 or iter == 1:
+    #                 self.messages.append({"role": "assistant", "content": message[11:]})
+    #             else:
+    #                 text = assistant_response + message
+    #                 summary = SUMMARIZER(text, max_length=max(250, len(text.split())), min_length=min(250, len(text.split())), do_sample=False)
+    #                 self.messages[-1]["content"] = summary[0]['summary_text']
+
+    #         # Write to log as well
+    #         write_to_log(log_file, "User or summarized query: "+ added_message)
+    #         write_to_log(log_file, message)
+    #         write_to_log(log_file, "---------------------------------------------------------------------------")
+    #         print(self.messages)
+    #         iter += 1
 
 if __name__ == "__main__":
     x = OpenAI_API()
-    print(x.single_chat("What is the square root of 2?"))
-
+    x.single_chat(summarize=True)
 

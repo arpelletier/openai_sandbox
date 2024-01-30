@@ -231,6 +231,12 @@ class Prompt_Response():
                 # If there have been prompts before, then 
                 else:
                     prompt = "Retry but do not make the output verbose at all."
+                """
+                You could also try how you want the results
+                Like put hashtags between the words
+
+                Lang chain might have something like this too
+                """
                 
                 response = self.client.single_chat(prompt)
                 

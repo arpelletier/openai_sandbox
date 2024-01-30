@@ -1,9 +1,10 @@
 import pandas as pd
-from neo4j_api import GraphDatabase, RoutingControl
+from neo4j import GraphDatabase, RoutingControl
+from config import NEO4J_URI, NEO4J_USER, NEO4J_PASSWORD
 
-neo4j_uri = "neo4j_api+s://d1751857.databases.neo4j_api.io"  # The default URI for Neo4j
-neo4j_user = "neo4j_api"
-neo4j_password = "Nwb27DK-3SuiqTAaW01VjVKRN_mnEgDLqQDVpPncVAI"
+neo4j_uri = NEO4J_URI
+neo4j_user = NEO4J_USER
+neo4j_password = NEO4J_PASSWORD
 
 def get_schema():
     with GraphDatabase.driver(neo4j_uri, auth=(neo4j_user, neo4j_password)) as driver:
