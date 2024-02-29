@@ -81,13 +81,53 @@ class SpacyNER:
                 # Make note that the keyword was found 
                 if check_word in self.graph_nodes:
                     self.found_nodes.append(keyword)
+
+    def clean_ner_results(self, scientific_ents: list, disease_ents: list) -> None:
+        """
+        Mainly checks duplicates between CHEMICAL (en_ner_bc5cdr_md) and SIMPLE_CHEMICAL (en_ner_bionlp13cg_md).
+        """
+        to_remove = list()
+
+        for disease_ent in disease_ents:
+            for scientific_ent in scientific_ents:
+                # Check disease name of chemicals first
+                if disease_ent[0] == scientific_ent[0]:
+                    to_remove.append(disease_ent)
+
+        for remove in to_remove:
+            disease_ents.remove(remove)
+
+    
+    def process_ner_results(self, ner_results: list):
+        return
+        '''
+        For all NER results, check if there are any name matches in the nodes.
+        syntrophin gamma 1
+        '''
+        node_types = ['ATC', 'MeSH_Disease', 'biological_process', 'molecular_function', 'MeSH_Compound', 
+                      'DrugBank_Compound', 'MeSH_Anatomy', 'KEGG_Pathway', 'MeSH_Tree_Disease', 'Reactome_Reaction', 
+                      'MeSH_Tree_Anatomy', 'Reactome_Pathway', 'cellular_component', 'Entrez', 'UniProt']
         
+        '''
+        AMINO_ACID,, CANCER, 
+        , IMMATERIAL_ANATOMICAL_ENTITY,
+        MULTI-TISSUE_STRUCTURE, ORGANISM, ORGANISM_SUBDIVISION, ORGANISM_SUBSTANCE, 
+        PATHOLOGICAL_FORMATION, SIMPLE_CHEMICAL, TISSUE
+        '''
+        # for result in ner_results:
+        #     for node in node_types:
+        #         entity = result[0]
+        #         entity_type = result[1]
+        #         if entity_type == 'GENE_OR_GENE_PRODUCT':
+        #             ...
+        #         elif entity_type == 'DISEASE':
+        #             ...
+        #         elif entity_type == ''
+        #         elif entity_type == 'ORGAN' or entity_type == 'DEVELOPING_ANATOMICAL_STRUCTURE' or entity_type == 'ANATOMICAL_SYSTEM':
+        #             ...
+        #         elif entity_type == 'CELL' or entity_type == 'CELLULAR_COMPONENT'
 
-
-
-
-
-
+        
 if __name__ == "__main__":
     ner = SpacyNER()
     ner.check_json(keyword='Q86XR7')

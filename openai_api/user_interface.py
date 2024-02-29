@@ -51,6 +51,14 @@ class Interface():
                     findable_protein_names[ner_result[0]] = found_proteins
 
         return findable_protein_names, not_findable_protein_names
+    
+    def process_ner_results(self, ner_results: list):
+        '''
+        For all NER results, check if there are any name matches in the nodes.
+        syntrophin gamma 1
+        '''
+        for result in ner_results:
+            ...
 
     def chat(self):
         '''
@@ -59,6 +67,13 @@ class Interface():
         '''
         user_input = input("User: ")
         disease_ents, scientific_ents = self.ner.get_entities(text=user_input)
+        print("PRE CLEAN UP")
+        print("DISEASE ENTS:", disease_ents)
+        print("SCIENTIFIC ENTS:", scientific_ents)
+        self.ner.clean_ner_results(scientific_ents=scientific_ents, disease_ents=disease_ents)
+        print('POST CLEAN UP')
+        print("ALL ENTS:", disease_ents + scientific_ents)
+        return
         # Process gene products
         findable_proteins, not_findable_proteins = self.process_ner_gene_products(scientific_ents)
 
