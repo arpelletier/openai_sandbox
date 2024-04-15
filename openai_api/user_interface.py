@@ -14,7 +14,7 @@ Since the mesh ids may not be updated, I focused specifically on UniProt
 '''
 
 from openai_client_langchain import OpenAI_API
-from named_entity_recognition import SpacyNER
+from named_entity_recognition import NamedEntityRecognition
 from protein_utils import Protein_Utility
 
 class Interface():
@@ -23,7 +23,7 @@ class Interface():
         # TODO: idk if these two belong here
         # Maybe keep these in another file/move them so their utility
         # is better delegated
-        self.ner = SpacyNER()
+        self.ner = NamedEntityRecognition()
         self.protein_utility = Protein_Utility()
 
     def process_ner_gene_products(self, ner_results: list):
@@ -61,19 +61,52 @@ class Interface():
             ...
 
     def chat(self):
-        '''
-        Try and get as much info out of the user as possible.
-        Once there is enough information, then use the llm 
-        '''
         user_input = input("User: ")
+        context = self.ner.generate_context(user_input)
+
+
+        example_node = "MATCH (p1:Entrez {name: 'Entrez:1756'})"
+        llm_context = """
+        Write a query in cypher to answer the query \"{}\". 
+        Here is additional context for the query containing the node names. 
+        The first entry per tuple is a name and the second entry per tuple is the name of the node in the graph: {}.
+        For example, this would mean if the context included the tuple ('dystrophin', 'Entrez:1756'), then  {} would find the node. 
+        """.format(user_input, context, example_node)
+
+        # 
+
+        print("LLM CONTEXT: {}".format(llm_context))
+
+        self.llm_client.single_chat(init_query=llm_context)
+
+        '''
+        # It looks like I was trying to capture something here, but I went with a different way.
+
+        user_input = input("User: ")
+        context = self.ner.generate_context(user_input)
+
         disease_ents, scientific_ents = self.ner.get_entities(text=user_input)
-        print("PRE CLEAN UP")
-        print("DISEASE ENTS:", disease_ents)
-        print("SCIENTIFIC ENTS:", scientific_ents)
+
+        print("Disease:", disease_ents)
+        print("Scientific:", scientific_ents)
+        # Clean up duplicates and combine results
         self.ner.clean_ner_results(scientific_ents=scientific_ents, disease_ents=disease_ents)
-        print('POST CLEAN UP')
-        print("ALL ENTS:", disease_ents + scientific_ents)
+        all_ents = disease_ents + scientific_ents
+
+        # Check existance of these entites in the KG
+        ner_entites_to_node_names = self.ner.process_ner_results(all_ents)
+
+        print("NER ENTITIES TO NODE NAMES:", ner_entites_to_node_names)
+
+        llm_context = """
+        Someone is asking to write a query in cypher to answer the query\"{}\". 
+        Here is additional context for the query containing the node names. 
+        The first entry per tuple is a name and the second entry per tuple is the name of the node in the graph: {}.
+        """.format(user_input, ner_entites_to_node_names)
+        '''
         return
+
+
         # Process gene products
         findable_proteins, not_findable_proteins = self.process_ner_gene_products(scientific_ents)
 

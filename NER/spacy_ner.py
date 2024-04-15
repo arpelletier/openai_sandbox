@@ -1,22 +1,25 @@
 import spacy
-from config import MESH_ID_CONFIG
+# from config import MESH_ID_CONFIG
 from scispacy.linking import EntityLinker
 
 class SpacyNER:
     def __init__(self):
         self.disease_ner_nlp = spacy.load("en_ner_bc5cdr_md")
         self.scientific_entity_nlp = spacy.load("en_ner_bionlp13cg_md")
-        self.pos_nlp = spacy.load("en_core_web_sm")
+        # self.pos_nlp = spacy.load("en_core_web_sm")
 
     def disease_ner(self, text: str):
-        # disease_ner_nlp = spacy.load("en_ner_bc5cdr_md")
         document = self.disease_ner_nlp(text)
         return [(ent.text, ent.label_) for ent in document.ents]
 
     def scientific_entity_ner(self, text: str):
-        # disease_ner_nlp = spacy.load("en_ner_bionlp13cg_md")
         document = self.scientific_entity_nlp(text)
         return [(ent.text, ent.label_) for ent in document.ents]
+    
+    def get_ner_results(self, text: str):
+        dis_ent = self.disease_ner(text)
+        sci_ent = self.scientific_entity_ner(text)
+        return dis_ent + sci_ent
 
     def part_of_speech_tags(self, text: str):
         # pos_nlp = spacy.load("en_core_web_sm")
@@ -59,7 +62,21 @@ class SpacyNER:
 
 
 if __name__ == "__main__":
-    prompt = "What drugs treat Crohn's disease?"
+    TEXT = """In addition to their essential catalytic role in protein biosynthesis, aminoacyl-tRNA synthetases participate in numerous other functions, 
+    including regulation of gene expression and amino acid biosynthesis via transamidation pathways. Herein, we describe a class of aminoacyl-tRNA synthetase-like 
+    (HisZ) proteins based on the catalytic core of the contemporary class II histidyl-tRNA synthetase whose members lack aminoacylation activity but are instead essential 
+    components of the first enzyme in histidine biosynthesis ATP phosphoribosyltransferase (HisG). Prediction of the function of HisZ in Lactococcus lactis was 
+    assisted by comparative genomics, a technique that revealed a link between the presence or the absence of HisZ and a systematic variation in the length of the HisG polypeptide. 
+    HisZ is required for histidine prototrophy, and three other lines of evidence support the direct involvement of HisZ in the transferase function. 
+    (i) Genetic experiments demonstrate that complementation of an in-frame deletion of HisG from Escherichia coli (which does not possess HisZ) requires both HisG and HisZ from L. lactis. 
+    (ii) Coelution of HisG and HisZ during affinity chromatography provides evidence of direct physical interaction. 
+    (iii) Both HisG and HisZ are required for catalysis of the ATP phosphoribosyltransferase reaction. 
+    This observation of a common protein domain linking amino acid biosynthesis and protein synthesis implies an early connection between the biosynthesis of amino acids and proteins."""
+
+    TEXT = 'The presence of conserved phosphorylation sites in the regulatory domain of Protein Z suggests that phosphorylation may play a role in modulating its activity.'
+
+    TEXT = 'How viable is this hypothesis: Mercuric Chloride interacts with Alpha-Synuclein and other proteins involved in protein misfolding and aggregation pathways, exacerbating neurotoxicity.'
 
     ner = SpacyNER()
-    ner.show_entities(prompt)
+    ner_res = ner.get_ner_results(TEXT)
+    print(ner_res)

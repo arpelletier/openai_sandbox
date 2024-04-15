@@ -1,3 +1,6 @@
+'''
+HELPER FILE
+'''
 import sys
 sys.path.append('../')
 from neo4j import GraphDatabase, RoutingControl
