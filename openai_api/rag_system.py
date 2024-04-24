@@ -17,7 +17,7 @@ class RAG():
         query = "Which nodes are related to the term: {}".format(named_entity)
         docs = vectorstore.similarity_search(query)
 
-        return [doc.metadata['node_name'] for doc in docs]
+        return [doc.metadata['node_name'] for doc in docs][:3]
     
 if __name__ == "__main__":
     rag = RAG()

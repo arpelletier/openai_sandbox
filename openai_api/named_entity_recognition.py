@@ -73,6 +73,7 @@ class NamedEntityRecognition():
     
 if __name__ == "__main__":
    TEXT = "How viable is this hypothesis: Mercuric Chloride interacts with Alpha-Synuclein and other proteins involved in protein misfolding and aggregation pathways, exacerbating neurotoxicity."
+   TEXT = "How viable is this hypothesis: Lenvatinib inhibits Tyrosine-protein kinase Kit"
 #    TEXT = "What mesh compounds block BFGFR and are in the PPI network of Cadherin"
    x = NamedEntityRecognition()
    y = x.get_context(TEXT)
