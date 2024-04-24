@@ -8,7 +8,7 @@ URI = NEO4J_URI
 AUTH = (NEO4J_USER, NEO4J_PASSWORD)
 
 class Driver:
-    def __init__(self, uri, user, password, database="neo4j"):
+    def __init__(self, uri=NEO4J_URI, user=NEO4J_USER, password=NEO4J_PASSWORD, database="neo4j"):
         self.driver = GraphDatabase.driver(uri, auth=(user, password))
         self.database = database
 
@@ -30,10 +30,19 @@ class Driver:
                 return [res.data() for res in result.records]
             except (DriverError, Neo4jError) as Exception:
                 return Exception
+    
+    def check_query(self, query: str):
+        query_result = self.query_database(query)
+        if isinstance(query_result, Exception):
+            return -1, 'AN EXCEPTION OCCURED FROM QUERY: {}'.format(query_result)
+        if query == []:
+            return -2, 'No results found'
+        else:
+            return 0, 'These are the results of the query as a list: {}'.format(query_result)
             
 def testing():
-    query = """MATCH (n:MeSH_Tree_Anatomy) RETURN n LIMIT 25"""
-    driver = Driver(URI, NEO4J_USER, NEO4J_PASSWORD)
+    query = """MATCH p=()-[r:`-activator->`]->() RETURN p LIMIT 25"""
+    driver = Driver()
     result = driver.query_database(query)
     print('QUERY RESULT:', result)
     driver.close()

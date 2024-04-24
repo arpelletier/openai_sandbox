@@ -2,8 +2,10 @@
 from openai import OpenAI
 import sys
 import os
+import re
 from langchain.chains import ConversationChain
 from langchain_openai import ChatOpenAI
+from neo4j_driver import Driver
 
 sys.path.append('../')
 from config import OPENAI_KEY
@@ -61,6 +63,8 @@ DrugBank_Compound,['name']
 KEGG_Pathway,['name']
 biological_process,['name']
 """
+nodes = NODE_TYPES.split(',')
+NODE_LABELS = [node.replace('\n', '').replace('[\'name\']', '') for node in nodes][:-1]
 # TODO: Store in txt
 RELATIONSHIP_TYPES = """
 "isa"
@@ -170,12 +174,38 @@ RELATIONSHIP_TYPES = """
 "acts_upstream_of_negative_effect"
 """
 
+def extract_code(response: str):
+    code_blocks = re.findall(r'```(.*?)```', response, re.DOTALL)
+    # Combine code to be one block
+    code = '\n'.join(code_blocks)
+    return code
+
+def get_relationships(cypher_code: str):
+    driver = Driver()
+    relationships = dict()
+
+    # Gather all node labels
+    node_label_pattern = r'\((\w+):(\w+)\)'
+    node_labels = re.findall(node_label_pattern, cypher_code)
+    node_types = set([node[1] for node in node_labels if node[1] in NODE_LABELS])
+
+    # Now that you have the node types, you need to check the avalible relationships per node type
+    for node_type in node_types:
+        check_relationships_query = 'MATCH (n:{})-[r]->(m) RETURN DISTINCT type(r) AS relationship_type'.format(node_type)
+        relation_types_list = driver.query_database(check_relationships_query)
+        relationship_types = [relation['relationship_type'] for relation in relation_types_list]
+        relationships[node_type] = relationship_types
+    
+    return relationships
+
 class OpenAI_API():
 
     def __init__(self):
         # TODO: Find a way to add context without having to send "useless" queries
         self.conversation = ConversationChain(llm=ChatOpenAI(model_name="gpt-4", openai_api_key=OPENAI_KEY))
         self.log_folder = os.path.join('../chat_log')
+        self.driver = Driver()
+        
     
     def add_context(self, debug=True):
         log_file = get_log_file(self.log_folder)
@@ -201,11 +231,14 @@ class OpenAI_API():
     def single_chat(self, summarize=False, init_query=''):
         # For a single chat, just write everything that occurs in a conversation in 1 log file
         log_file = get_log_file(self.log_folder)
-
         
         # Index at 5 since there were already previous queries to add context
         self.add_context(debug=False)
         conv_index = 5
+
+        # Determine if query needs to be corrected
+        query_correction = False
+        original_query = ''
 
         # Begin conversation
         for i in range(9999):
@@ -214,13 +247,96 @@ class OpenAI_API():
             else:
                 # Collect user input
                 user_input = input("User Input: ")
+                if i == 0:
+                    original_query = user_input
+            
+            if query_correction:
+                # Once you already corrected the query, you can check if the question is any good
+                # Cite the most recent query as evidence
+                updated_input = """
+                Here is the response of the most recent cypher query: {}.
+                Based on the response, judge the original question: {}
+                Cite the generated cypher query as evidence.
+                """.format(query_msg, original_query)
 
             self.conversation.invoke(user_input) 
             llm_response = self.conversation.memory.chat_memory.messages[conv_index].content
             conv_index += 2
 
-            # Show response to the screen
-            print(llm_response)
+            extracted_code = extract_code(llm_response)
+            
+            ################################################################################
+            # FOR DEBUGGING PURPOSES
+            print('CONVERSATION MEMORY:\n*************')
+            for j in range(len(self.conversation.memory.chat_memory.messages)):
+                print('INDEX: {}\t ITERATION: {}'.format(j, i))
+                print(self.conversation.memory.chat_memory.messages[j].content)
+                print('*************')
+            print('------------------------------------------------------------------------------------------\n')  
+            ################################################################################  
+
+            '''
+            Check if the code works
+            If the code works, then send it to the user
+            If the code does not work...
+                If the code does not return anything, try resending with reminders such as checking namespace IDs
+                If the code has a syntax error, try resending with the error message
+            '''
+            
+            ################################################################################
+            # QUERY CHECKING
+            # NOTE: WILL PUT INTO A FUNCTION LATER
+            print('QUERY CHECKING\n*************')
+            query_code, query_msg = self.driver.check_query(extracted_code)
+            
+            # Query Code -1 means that there was an exception
+            # This likely means that there was some syntax error
+            # In this case, we can reprompt the LLM and send in more context letting it know about the exception
+            if query_code == -1:
+                # Report the error to the user
+                print('The query generated by the LLM resulted in an exception.')
+                print(query_msg)
+                print('Reprompting the LLM...')
+                
+                # Reprompt the LLM
+                updated_input = "The query returned an exception: {}. Return another cypher query.".format(query_msg)
+
+                # Reask the LLM
+                self.conversation.invoke(updated_input) 
+                updated_llm_response = self.conversation.memory.chat_memory.messages[conv_index].content
+                conv_index += 2
+                print('UPDATED LLM RESPONSE')
+                print(updated_llm_response)
+                query_correction = True
+
+            # Query code -2 means that 
+            elif query_code == -2:
+                # Report the error to the user
+                print('The query generated by the LLM did not return any results.')
+                print('Reprompting the LLM...')
+
+                # Get the relationships in the original code 
+                relations = get_relationships(extracted_code)
+
+                # Send in an updated message to the LLM that makes sure that all rules are followed.
+                updated_input = """
+                The query did not return any results.
+                Make another query. Make sure that all names have the correct identifier. 
+                For example, names should be listed as \'UniProt:Q7L576\' or \'MeSH_Compound:C554777\'.
+                Here is a dictionary of relationships each node type can have. Make sure this list is adhered to: {}
+                """.format(relations)
+
+                # Reask the LLM
+                self.conversation.invoke(updated_input) 
+                updated_llm_response = self.conversation.memory.chat_memory.messages[conv_index].content
+                conv_index += 2
+                print('UPDATED LLM RESPONSE')
+                print(updated_llm_response)
+                query_correction = True
+
+
+            ################################################################################  
+
 
             # Save responses
             write_to_log(log_file, "User query: " + user_input)

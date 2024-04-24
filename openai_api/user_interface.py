@@ -20,9 +20,6 @@ from protein_utils import Protein_Utility
 class Interface():
     def __init__(self):
         self.llm_client = OpenAI_API()
-        # TODO: idk if these two belong here
-        # Maybe keep these in another file/move them so their utility
-        # is better delegated
         self.ner = NamedEntityRecognition()
         self.protein_utility = Protein_Utility()
 
@@ -31,6 +28,14 @@ class Interface():
         user_input = input("User: ")
         context = self.ner.get_context(user_input)
 
+        '''
+        Check initial query
+            If the query returns something, then immediately send it to the user
+            If the query returns an exception, then return the exception to LLM 
+            If the query returns nothing, still tell the LLM the issue but ask to try again
+                Give it some reiminders like the namespace ID has to be right before
+        '''
+        
         # Define example
         example_node = "MATCH (p1:Entrez {name: 'Entrez:1756'})"
         llm_context = """
