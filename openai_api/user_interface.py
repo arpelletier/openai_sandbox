@@ -1,40 +1,19 @@
-'''
-1. Ask for user input 
-2. Perform NER
-    a. with NER results, see what hits the dictionary 
-    b. if no exact match, re ask user for more context
-3. Send the context to the llm and ask to generate a query
-    - Here are the relevant terms in the graph: ___, ____, ___, ...
-    - Now, make me a query to <original ask>
-'''
-
-'''
-NOTE
-Since the mesh ids may not be updated, I focused specifically on UniProt
-'''
-
 from openai_client_langchain import OpenAI_API
 from named_entity_recognition import NamedEntityRecognition
 from protein_utils import Protein_Utility
+from neo4j_driver import Driver
 
 class Interface():
     def __init__(self):
         self.llm_client = OpenAI_API()
         self.ner = NamedEntityRecognition()
-        self.protein_utility = Protein_Utility()
+        self.driver = Driver()
+        self.protein_utility = Protein_Utility() # NOTE: idk if i need this maybe get rid of it
 
     def chat(self):
         # Define user input and context
         user_input = input("User: ")
         context = self.ner.get_context(user_input)
-
-        '''
-        Check initial query
-            If the query returns something, then immediately send it to the user
-            If the query returns an exception, then return the exception to LLM 
-            If the query returns nothing, still tell the LLM the issue but ask to try again
-                Give it some reiminders like the namespace ID has to be right before
-        '''
         
         # Define example
         example_node = "MATCH (p1:Entrez {name: 'Entrez:1756'})"
