@@ -41,8 +41,10 @@ class Driver:
             return 0, 'These are the results of the query as a list: {}'.format(query_result)
             
 def testing():
-    query = """MATCH p=()-[r:`-activator->`]->() RETURN p LIMIT 25"""
+    query = """MATCH p = (n:SMPDB_Pathway {name: \'SMPDB_Pathway:SMP0019503\'})-[]-() RETURN p"""
+    print(query)
     driver = Driver()
+    driver.verify_connectivity()
     result = driver.query_database(query)
     print('QUERY RESULT:', result)
     driver.close()

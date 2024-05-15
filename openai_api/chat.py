@@ -5,40 +5,11 @@ from neo4j_driver import Driver
 from langchain.chains import ConversationChain
 from langchain_openai import ChatOpenAI
 from named_entity_recognition import NamedEntityRecognition
+from utility import *
 
 # Save open AI key
 sys.path.append('../')
 from config import OPENAI_KEY
-
-def get_node_and_edge_types(node_path='data/node_types.txt', edge_path='data/edge_types.txt'):
-    node_types_path = node_path
-    edge_types_path = edge_path
-
-    node_types = ""
-    edge_types = ""
-
-    with open(node_types_path) as f:
-        for node in f:
-            node_types += f"\"{node.strip()}\";"
-        node_types = node_types[:-1]       
-
-    with open(edge_types_path) as f:
-        for edge in f:
-            edge_types += f"\"{edge.strip()}\","
-        edge_types = edge_types[:-1]
-    
-    return node_types, edge_types
-
-def read_query_examples(query_examples_path='data/query_examples.txt'):
-    with open(query_examples_path, 'r') as f:
-        query_examples = f.read()
-        return query_examples
-
-def extract_code(response: str):
-    code_blocks = re.findall(r'```(.*?)```', response, re.DOTALL)
-    # Combine code to be one block
-    code = '\n'.join(code_blocks)
-    return code
 
 NODE_TYPES, EDGE_TYPES = get_node_and_edge_types()
 QUERY_EXAMPLES = read_query_examples()
@@ -52,12 +23,12 @@ class Chat:
         self.ner = NamedEntityRecognition()
 
         # Initialize query builder, query evaluator and reasoner
-        self.query_builder = ConversationChain(llm=ChatOpenAI(model_name="gpt-4", openai_api_key=OPENAI_KEY))
-        self.query_evaluator = ConversationChain(llm=ChatOpenAI(model_name="gpt-4", openai_api_key=OPENAI_KEY))
-        self.reasoner = ConversationChain(llm=ChatOpenAI(model_name="gpt-4", openai_api_key=OPENAI_KEY))
+        self.query_builder = ConversationChain(llm=ChatOpenAI(model_name="gpt-4o", openai_api_key=OPENAI_KEY))
+        self.query_evaluator = ConversationChain(llm=ChatOpenAI(model_name="gpt-4o", openai_api_key=OPENAI_KEY))
+        self.reasoner = ConversationChain(llm=ChatOpenAI(model_name="gpt-4o", openai_api_key=OPENAI_KEY))
 
         # Add contexts to each LLM agent
-        self.qb_index = self.init_query_builder(debug=True)
+        self.qb_index = self.init_query_builder(debug=False)
         self.qe_index = self.init_query_evaluator()
         self.r_index = 1
 
@@ -94,7 +65,11 @@ class Chat:
     
     def generate_initial_query_context(self):
         # Generate inital query context
+        # Also return the inital named entities
         context = self.ner.get_context(self.inital_question)
+        print('GENERATING NAMED ENTITIES')
+        print(context)
+        print()
         example_node = "MATCH (p1:Entrez {name: 'Entrez:1756'})"
         llm_context = """
         Write a query in cypher to answer the question \"{}\". 
@@ -103,11 +78,7 @@ class Chat:
         For example, this would mean if the context included the tuple ('dystrophin', 'Entrez:1756'), then {} would find the node. 
         Avoid using the CONTAINS keyword.
         """.format(self.inital_question, context, example_node)
-        return llm_context
-    
-    def generate_inital_reasoner_context(self):
-        context = "Generate a "
-        ...
+        return llm_context, context
 
     def conversation(self):
         # Save a driver instance for downstream query checking
@@ -116,7 +87,8 @@ class Chat:
         for i in range(9999):
             if i == 0:
                 # Upon initally starting the conversation, ask the query builder to design a query
-                initial_question = self.generate_initial_query_context()
+                initial_question, ner_context = self.generate_initial_query_context()
+                print("*****\nNAMED ENTITIES\n{}\n*****".format(ner_context))
                 self.query_builder.invoke(initial_question)
                 generated_query = extract_code(self.query_builder.memory.chat_memory.messages[self.qb_index].content)
                 self.qb_index += 2
@@ -124,6 +96,13 @@ class Chat:
                 self.query_evaluator.invoke('Make sure the following query is correct syntactically and makes sense to answer the question {}. Modify if needed and otherwise return the original query.'.format(generated_query))
                 modified_query = extract_code(self.query_evaluator.memory.chat_memory.messages[self.qe_index].content)
                 self.qe_index += 2
+
+                # # DEBUG
+                # print('QUERY BUILDER HISTORY AT INDEX {}'.format(self.qb_index))
+                # print(self.query_builder.memory)
+                # print('QUERY EVALUATOR HISTORY AT INDEX {}'.format(self.qe_index))
+                # print(self.query_evaluator.memory)
+                # # DEBUG
             else:
                 # In the else, either you are reprompting or you are still trying to 
                 # get a query that can compile
@@ -139,6 +118,13 @@ class Chat:
                 self.query_evaluator.invoke('Make sure the following query is correct syntactically and makes sense to answer the question {}. Modify if needed and otherwise return the original query.'.format(generated_query))
                 modified_query = extract_code(self.query_evaluator.memory.chat_memory.messages[self.qe_index].content)
                 self.qe_index += 2
+
+                # # DEBUG
+                # print('QUERY BUILDER HISTORY AT INDEX {}'.format(self.qb_index))
+                # print(self.query_builder.memory)
+                # print('QUERY EVALUATOR HISTORY AT INDEX {}'.format(self.qe_index))
+                # print(self.query_evaluator.memory)
+                # # DEBUG
 
 
             # After the query is checked, see if anything returns 
@@ -163,35 +149,30 @@ class Chat:
                 message = self.reasoner.memory.chat_memory.messages[self.r_index].content
                 self.r_index += 2
 
-                # DEBUG
-                print('QUERY BUILDER HISTORY')
-                print(self.query_builder.memory)
-                print('QUERY EVALUATOR HISTORY')
-                print(self.query_evaluator.memory)
-                print('ORIGINAL GENERATED QUERY')
-                print(generated_query)
-                print('MODIFIED QUERY')
-                print(modified_query)
-                # DEBUG
+                # # DEBUG
+                # print('QUERY BUILDER HISTORY')
+                # print(self.query_builder.memory)
+                # print('QUERY EVALUATOR HISTORY')
+                # print(self.query_evaluator.memory)
+                # print('ORIGINAL GENERATED QUERY')
+                # print(generated_query)
+                # print('MODIFIED QUERY')
+                # print(modified_query)
+                # # DEBUG
 
                 print('REASONER MESSAGE')
                 print(message)
 
-
-        
-
-
-
-
-        # first, send the question to the query builder
-        # next, have the query reasoner modify the code 
-        # After, get the code checked to see if there are any results
-        # If code compiles, send to reasoner
-            # After sending to reasoner, reprompt
-        # If code does not compile, restart at step 1
-
-
 if __name__ == '__main__':
-    question = "How viable is this hypothesis: Mercuric Chloride interacts with Alpha-Synuclein and other proteins involved in protein misfolding and aggregation pathways, exacerbating neurotoxicity."
+    # question = "How viable is this hypothesis: Mercuric Chloride interacts with Alpha-Synuclein and other proteins involved in protein misfolding and aggregation pathways, exacerbating neurotoxicity."
+    # question = "How viable is this hypothesis: Bleomycinum Mack increases C-X-C motif chemokine ligand 8"
+    # question = "How viable is this hypothesis: Tryptizol can be used to treat paranoid schizophrenia"
+    # question = "How viable is this hypothesis: Tert-Butylhydroperoxide can be used to treat paranoid schizophrenia"
+    # question = "How viable is this hypothesis: Cyclophosphamide Monohydrate can be used to treat transitional cell carcinomas"
+    # question = "How viable is this hypothesis: Lymphotoxin alpha can be used to treat Atherosclerosis"
+    # question = "How viable is this hypothesis: Ketamine hydrochloride can be used to treat ventricular tachyarrhythmia."
+    # question = "Does Triacylglycerol Biosynthesis play a significant role in arrythmia?"
+    question = "How viable is this hypothesis: Can Ketamine (aka MeSH_Compound:D007649) be used to treat Ventricular Tachyarrhythmia (aka MeSH_Disease:D017180)?"
+    print('User Input: ' + question)
     chat = Chat(question)
     chat.conversation()
