@@ -1,5 +1,6 @@
 import sys
 import re
+import random
 from openai import OpenAI
 from neo4j_driver import Driver
 from langchain.chains import ConversationChain
@@ -80,7 +81,11 @@ class Chat:
         """.format(self.inital_question, context, example_node)
         return llm_context, context
 
-    def conversation(self):
+    def conversation(self, max_num_results_returned=30):
+        # Define max_tries
+        # Will be updated per iteration
+        max_tries = 15
+
         # Save a driver instance for downstream query checking
         neo4j_driver = Driver()
 
@@ -88,21 +93,31 @@ class Chat:
             if i == 0:
                 # Upon initally starting the conversation, ask the query builder to design a query
                 initial_question, ner_context = self.generate_initial_query_context()
+
+                # DEBUG 
                 print("*****\nNAMED ENTITIES\n{}\n*****".format(ner_context))
+                # DEBUG
+
+                # Build an inital query
                 self.query_builder.invoke(initial_question)
                 generated_query = extract_code(self.query_builder.memory.chat_memory.messages[self.qb_index].content)
                 self.qb_index += 2
                 # Have the query evaluator modify the query
-                self.query_evaluator.invoke('Make sure the following query is correct syntactically and makes sense to answer the question {}. Modify if needed and otherwise return the original query.'.format(generated_query))
+                self.query_evaluator.invoke('Make sure the following query is correct syntactically and makes sense to answer the question {}. Modify if needed and otherwise return the original query. Limit to 30 results.'.format(generated_query))
                 modified_query = extract_code(self.query_evaluator.memory.chat_memory.messages[self.qe_index].content)
                 self.qe_index += 2
+                # NOTE: THIS MAY BE BETTER ELSEWHERE
+                # checker_results, checker_message = extract_results(modified_query)
+                
 
-                # # DEBUG
+                # DEBUG
+                # This gave me an error for some random reason
                 # print('QUERY BUILDER HISTORY AT INDEX {}'.format(self.qb_index))
-                # print(self.query_builder.memory)
+                # print(self.query_builder.memory.chat_memory.messages[self.qb_index].content)
                 # print('QUERY EVALUATOR HISTORY AT INDEX {}'.format(self.qe_index))
-                # print(self.query_evaluator.memory)
-                # # DEBUG
+                # print(self.query_evaluator.memory.chat_memory.messages[self.qe_index].content)
+                # DEBUG
+
             else:
                 # In the else, either you are reprompting or you are still trying to 
                 # get a query that can compile
@@ -117,48 +132,111 @@ class Chat:
                 self.qb_index += 2
                 self.query_evaluator.invoke('Make sure the following query is correct syntactically and makes sense to answer the question {}. Modify if needed and otherwise return the original query.'.format(generated_query))
                 modified_query = extract_code(self.query_evaluator.memory.chat_memory.messages[self.qe_index].content)
+                # NOTE: Place this elsewhere
+                # checker_results, checker_message = extract_results(modified_query)
                 self.qe_index += 2
 
-                # # DEBUG
-                # print('QUERY BUILDER HISTORY AT INDEX {}'.format(self.qb_index))
-                # print(self.query_builder.memory)
-                # print('QUERY EVALUATOR HISTORY AT INDEX {}'.format(self.qe_index))
-                # print(self.query_evaluator.memory)
-                # # DEBUG
+                # DEBUG
+                print('i: {}, self.qb_index: {}, self.qe_index: {}'.format(i, self.qb_index, self.qe_index))
+                print('QUERY BUILDER HISTORY AT INDEX {}'.format(self.qb_index))
+                print(self.query_builder.memory)
+                print('QUERY EVALUATOR HISTORY AT INDEX {}'.format(self.qe_index))
+                print(self.query_evaluator.memory)
+                # DEBUG
 
 
             # After the query is checked, see if anything returns 
             if modified_query != "":
-                query_code, query_msg = neo4j_driver.check_query(modified_query)
+                query_code, query_msg, query_msg_raw = neo4j_driver.check_query(modified_query)
             else:
-                query_code, query_msg = neo4j_driver.check_query(generated_query)
+                query_code, query_msg, query_msg_raw = neo4j_driver.check_query(generated_query)
             
-            if query_code == -1:
-                # If the query code is -1, then there was an error
-                # Restart the loop and go back to the top
-                continue
-            else:
-                # If the query code is not -1, then you should be able to use the reasoner
-                # Once the reasoner gives a response, reprompt
+            if i > max_tries:
+                # If the max tries are exceeded, increment by i and then retype reasoner query
+                max_tries += i
                 reasoner_query = """
                 Formulate a response based on your knowledge to this question: {}.
-                I queried a biomedical knowledge graph with this query: {}.
-                These were the results returned: {}
-                Also cite the results of the query in your response.""".format(self.inital_question, modified_query, query_msg)
+                I tried to query a biomedical knowledge graph with this query: {}.
+                I could not get a query to work so I have no results.
+                Try to reason through the question anyway.""".format(self.inital_question, modified_query)
+
+                # DEBUG
+                # print('MODIFIED QUERY')
+                # print(modified_query)
+                # print('CHECKER RESULTS')
+                # print(checker_results)
+                # DEBUG
+
                 self.reasoner.invoke(reasoner_query)
                 message = self.reasoner.memory.chat_memory.messages[self.r_index].content
                 self.r_index += 2
 
-                # # DEBUG
-                # print('QUERY BUILDER HISTORY')
-                # print(self.query_builder.memory)
-                # print('QUERY EVALUATOR HISTORY')
-                # print(self.query_evaluator.memory)
-                # print('ORIGINAL GENERATED QUERY')
-                # print(generated_query)
-                # print('MODIFIED QUERY')
-                # print(modified_query)
-                # # DEBUG
+                # DEBUG
+                print('QUERY BUILDER HISTORY')
+                print(self.query_builder.memory)
+                print('QUERY EVALUATOR HISTORY')
+                print(self.query_evaluator.memory)
+                print('ORIGINAL GENERATED QUERY')
+                print(generated_query)
+                print('MODIFIED QUERY')
+                print(modified_query)
+                # DEBUG
+
+                print('REASONER MESSAGE')
+                print(message)
+                
+            elif query_code == -1 and i < max_tries:
+                # If the query code is -1, then there was an error
+                # Restart the loop and go back to the top
+                continue
+            else:
+                # Consider the current question being asked
+                if i == 0:
+                    question = self.inital_question
+                else:
+                    question = updated_input
+
+                # If the query code is not -1, then you should be able to use the reasoner
+                # Once the reasoner gives a response, reprompt
+                if type(query_msg_raw) == list and len(query_msg_raw) > max_num_results_returned:
+                    sampled_query_msg_raw = random.sample(query_msg_raw, max_num_results_returned)
+                    sampled_names = extract_results(sampled_query_msg_raw)
+                    reasoner_query = """
+                    Formulate a response based on your knowledge to this question: {}.
+                    I queried a biomedical knowledge graph with this query: {}.
+                    These are {} of the results (there may be more): {}
+                    These are the names of 5 results: {}
+                    Also cite the results of the query in your response.""".format(question, modified_query, max_num_results_returned, sampled_query_msg_raw, sampled_names)
+                else:
+                    sampled_names = extract_results(query_msg)
+                    reasoner_query = """
+                    Formulate a response based on your knowledge to this question: {}.
+                    I queried a biomedical knowledge graph with this query: {}.
+                    These are the results: {}
+                    These are the names of some of the results if there are any: {}
+                    Also cite the results of the query in your response.""".format(question, modified_query, query_msg, sampled_names)
+
+                # DEBUG
+                print('MODIFIED QUERY')
+                print(modified_query)
+                print('CHECKER RESULTS')
+                print(sampled_names)
+                # DEBUG
+
+                self.reasoner.invoke(reasoner_query)
+                message = self.reasoner.memory.chat_memory.messages[self.r_index].content
+                self.r_index += 2
+
+                # DEBUG
+                print('QUERY BUILDER HISTORY')
+                print(self.query_builder.memory)
+                print('QUERY EVALUATOR HISTORY')
+                print(self.query_evaluator.memory)
+                print('ORIGINAL GENERATED QUERY')
+                print(generated_query)
+                print('MODIFIED QUERY')
+                print(modified_query)
+                # DEBUG
 
                 print('REASONER MESSAGE')
                 print(message)
@@ -172,7 +250,8 @@ if __name__ == '__main__':
     # question = "How viable is this hypothesis: Lymphotoxin alpha can be used to treat Atherosclerosis"
     # question = "How viable is this hypothesis: Ketamine hydrochloride can be used to treat ventricular tachyarrhythmia."
     # question = "Does Triacylglycerol Biosynthesis play a significant role in arrythmia?"
-    question = "How viable is this hypothesis: Can Ketamine (aka MeSH_Compound:D007649) be used to treat Ventricular Tachyarrhythmia (aka MeSH_Disease:D017180)?"
+    # question = "How viable is this hypothesis: Can Ketamine (aka MeSH_Compound:D007649) be used to treat Ventricular Tachyarrhythmia (aka MeSH_Disease:D017180)?"
+    question = 'What drugs are currently being prescribed to treat Arrhythmogenic Cardiomyopathy?'
     print('User Input: ' + question)
     chat = Chat(question)
     chat.conversation()
